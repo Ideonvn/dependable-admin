@@ -2,11 +2,11 @@ import { signIn } from "@/lib/auth"
  
 export default function SignIn() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0F1115]">
+      <div className="max-w-md w-full bg-white dark:bg-[#121212] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Dependable Admin</h1>
-          <p className="text-gray-600">Sign in to access the admin interface</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Dependable Admin</h1>
+          <p className="text-gray-600 dark:text-gray-400">Sign in to access the admin interface</p>
         </div>
         
         <form
@@ -17,7 +17,7 @@ export default function SignIn() {
         >
           <button
             type="submit"
-            className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-lg px-6 py-3 text-gray-700 font-medium hover:bg-gray-50 transition-colors duration-200 shadow-sm"
+            className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-6 py-3 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 shadow-sm"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -41,7 +41,7 @@ export default function SignIn() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-500">
+        <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
           Access restricted to authorized users only
         </p>
       </div>
