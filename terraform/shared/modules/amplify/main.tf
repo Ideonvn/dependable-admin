@@ -1,0 +1,139 @@
+resource "aws_amplify_app" "admin_app" {
+  name       = var.app_name
+  repository = var.repository_url
+
+  # Build settings for Next.js
+  build_spec = <<-EOT
+    version: 1
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - .next/cache/**/*
+  EOT
+
+  # Environment variables
+  environment_variables = merge(
+    {
+      NEXTAUTH_URL = var.app_domain != "" ? "https://${var.app_domain}" : "https://main.${aws_amplify_app.admin_app.default_domain}"
+      _LIVE_UPDATES = jsonencode([{
+        pkg     = "next-version"
+        type    = "npm"
+        version = "latest"
+      }])
+    },
+    var.environment_variables
+  )
+
+  # Enable auto branch creation for pull requests
+  enable_auto_branch_creation = var.enable_auto_branch_creation
+  enable_branch_auto_build    = var.enable_branch_auto_build
+
+  # Custom rules for Next.js routing
+  custom_rule {
+    source = "/<*>"
+    status = "404-200"
+    target = "/index.html"
+  }
+
+  custom_rule {
+    source = "</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>"
+    status = "200"
+    target = "/index.html"
+  }
+
+  # Access token for private repositories (optional)
+  access_token = var.github_access_token != "" ? var.github_access_token : null
+
+  # IAM service role for Amplify
+  iam_service_role_arn = aws_iam_role.amplify_role.arn
+
+  # Platform - Web for Next.js SSR
+  platform = "WEB_COMPUTE"
+}
+
+# Main branch
+resource "aws_amplify_branch" "main" {
+  app_id      = aws_amplify_app.admin_app.id
+  branch_name = var.main_branch_name
+
+  enable_auto_build = true
+  stage             = "PRODUCTION"
+
+  environment_variables = var.branch_environment_variables
+}
+
+# Custom domain (optional)
+resource "aws_amplify_domain_association" "domain" {
+  count = var.app_domain != "" ? 1 : 0
+
+  app_id      = aws_amplify_app.admin_app.id
+  domain_name = var.app_domain
+
+  sub_domain {
+    branch_name = aws_amplify_branch.main.branch_name
+    prefix      = ""
+  }
+
+  sub_domain {
+    branch_name = aws_amplify_branch.main.branch_name
+    prefix      = "www"
+  }
+}
+
+# IAM role for Amplify
+resource "aws_iam_role" "amplify_role" {
+  name = "${var.app_name}-amplify-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "amplify.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+# Attach basic Amplify execution policy
+resource "aws_iam_role_policy_attachment" "amplify_backend_deployment" {
+  role       = aws_iam_role.amplify_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess-Amplify"
+}
+
+# Custom policy for additional AWS service access (if needed)
+resource "aws_iam_role_policy" "amplify_custom_policy" {
+  count = length(var.additional_policy_statements) > 0 ? 1 : 0
+
+  name = "${var.app_name}-custom-policy"
+  role = aws_iam_role.amplify_role.id
+
+  policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = var.additional_policy_statements
+  })
+}
+
+# Webhook for manual deployments (optional)
+resource "aws_amplify_webhook" "main" {
+  count = var.enable_webhook ? 1 : 0
+
+  app_id      = aws_amplify_app.admin_app.id
+  branch_name = aws_amplify_branch.main.branch_name
+  description = "Webhook for manual deployments"
+}

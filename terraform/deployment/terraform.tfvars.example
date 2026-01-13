@@ -1,0 +1,27 @@
+# Example terraform.tfvars
+# Copy this file to terraform.tfvars and fill in your values
+# DO NOT commit terraform.tfvars to git!
+
+# AWS Configuration
+aws_region = "af-south-1"
+
+# Repository Configuration
+repository_url = "https://github.com/your-org/dependable-admin"
+
+# GitHub Access Token (optional for public repos, required for private)
+# Generate at: https://github.com/settings/tokens
+# Needs: repo, admin:repo_hook scopes
+github_access_token = ""
+
+# NextAuth Configuration
+# Generate secret with: openssl rand -base64 32
+nextauth_secret = ""
+
+# Google OAuth Credentials
+# Get from: https://console.cloud.google.com/apis/credentials
+google_client_id     = ""
+google_client_secret = ""
+
+# Optional: Custom Domain Configuration
+# Uncomment and configure if using custom domain
+# app_domain = "admin.dependable.co.za"
