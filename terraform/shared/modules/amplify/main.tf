@@ -39,19 +39,6 @@ resource "aws_amplify_app" "admin_app" {
   enable_auto_branch_creation = var.enable_auto_branch_creation
   enable_branch_auto_build    = var.enable_branch_auto_build
 
-  # Custom rules for Next.js routing
-  custom_rule {
-    source = "/<*>"
-    status = "404-200"
-    target = "/index.html"
-  }
-
-  custom_rule {
-    source = "</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>"
-    status = "200"
-    target = "/index.html"
-  }
-
   # Access token for private repositories (optional)
   access_token = var.github_access_token != "" ? var.github_access_token : null
 
