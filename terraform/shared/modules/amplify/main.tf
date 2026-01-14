@@ -25,9 +25,6 @@ resource "aws_amplify_app" "admin_app" {
 
   # Environment variables
   environment_variables = merge(
-    var.app_domain != "" ? {
-      NEXTAUTH_URL = "https://${var.app_domain}"
-    } : {},
     {
       _LIVE_UPDATES = jsonencode([{
         pkg     = "next-version"
