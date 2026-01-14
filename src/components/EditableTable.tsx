@@ -70,6 +70,12 @@ export default function EditableTable({ records, onUpdate, onDelete, initialEdit
     filtered.sort((a, b) => {
       const aVal = a[sortField];
       const bVal = b[sortField];
+      
+      // Handle undefined values
+      if (aVal === undefined && bVal === undefined) return 0;
+      if (aVal === undefined) return 1;
+      if (bVal === undefined) return -1;
+      
       const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       return sortDirection === 'asc' ? comparison : -comparison;
     });
