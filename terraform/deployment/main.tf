@@ -16,6 +16,7 @@ module "dependable-admin-app" {
   environment_variables = {
     NEXTAUTH_URL         = "https://${var.app_domain}"
     NEXTAUTH_SECRET      = var.nextauth_secret
+    AUTH_TRUST_HOST      = "true"
     GOOGLE_CLIENT_ID     = var.google_client_id
     GOOGLE_CLIENT_SECRET = var.google_client_secret
     NEXT_PUBLIC_APP_NAME = "Dependable Admin"
