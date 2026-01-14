@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Send, Upload as UploadIcon, ArrowLeft, RefreshCw } from 'lucide-react';
 import {
@@ -13,7 +13,8 @@ import ClassSummaryTable from '@/components/ClassSummaryTable';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import AlertDialog from '@/components/AlertDialog';
 
-export default function OnboardingEdit({ params }: { params: { id: string } }) {
+export default function OnboardingEdit({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   const [onboarding, setOnboarding] = useState<SchoolOnboarding | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +37,7 @@ export default function OnboardingEdit({ params }: { params: { id: string } }) {
     try {
       // In real app, fetch from API
       const mockOnboarding: SchoolOnboarding = {
-        id: params.id,
+        id: id,
         school_id: 'school-1',
         school: {
           id: 'school-1',
@@ -130,7 +131,7 @@ export default function OnboardingEdit({ params }: { params: { id: string } }) {
   // Mock: Load onboarding data
   useEffect(() => {
     loadOnboardingData();
-  }, [params.id]);
+  }, [id]);
 
   const classSummary = useMemo(() => {
     if (!onboarding) return [];

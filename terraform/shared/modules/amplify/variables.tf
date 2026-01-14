@@ -69,5 +69,5 @@ variable "additional_policy_statements" {
 variable "aws_region" {
   description = "The AWS region to create all resources in"
   type        = string
-  default     = "af-south-1"
+  default     = "eu-west-1"
 }

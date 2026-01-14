@@ -76,18 +76,44 @@ Review the resources that will be created:
 
 ### Step 4: Deploy
 
+**Important: Two-Stage Deployment**
+
+Since NEXTAUTH_URL requires the app URL which isn't known until after creation, you have two options:
+
+**Option A: Deploy with Custom Domain (Recommended)**
+If you plan to use a custom domain, set `app_domain` in your `terraform.tfvars`:
+```hcl
+app_domain = "admin.yourdomain.com"
+```
+Then deploy normally:
 ```bash
-make provision
+make provision  # or: terraform apply
 ```
 
-Or manually:
-```bash
-terraform apply
-```
+**Option B: Two-Stage Deployment with Default Domain**
+If using the Amplify default domain:
 
-Type `yes` when prompted.
+1. First deployment (without NEXTAUTH_URL):
+   ```bash
+   terraform apply
+   ```
+   Type `yes` when prompted. Wait 5-10 minutes for the build.
 
-**Deployment takes 5-10 minutes** for the first build.
+2. Get the default domain from outputs:
+   ```bash
+   terraform output
+   ```
+   Note the `app_url` value (e.g., `https://main.d1a2b3c4d5e6f7.amplifyapp.com`)
+
+3. Add to your `terraform.tfvars`:
+   ```hcl
+   app_domain = "main.d1a2b3c4d5e6f7.amplifyapp.com"
+   ```
+
+4. Apply again to set NEXTAUTH_URL:
+   ```bash
+   terraform apply
+   ```
 
 ### Step 5: Get Your App URL
 

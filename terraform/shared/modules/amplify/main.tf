@@ -9,7 +9,7 @@ resource "aws_amplify_app" "admin_app" {
       phases:
         preBuild:
           commands:
-            - npm ci
+            - npm ci --cache .npm --prefer-offline
         build:
           commands:
             - npm run build
@@ -19,14 +19,16 @@ resource "aws_amplify_app" "admin_app" {
           - '**/*'
       cache:
         paths:
-          - node_modules/**/*
           - .next/cache/**/*
+          - .npm/**/*
   EOT
 
   # Environment variables
   environment_variables = merge(
+    var.app_domain != "" ? {
+      NEXTAUTH_URL = "https://${var.app_domain}"
+    } : {},
     {
-      NEXTAUTH_URL = var.app_domain != "" ? "https://${var.app_domain}" : "https://main.${aws_amplify_app.admin_app.default_domain}"
       _LIVE_UPDATES = jsonencode([{
         pkg     = "next-version"
         type    = "npm"
@@ -79,16 +81,11 @@ resource "aws_amplify_domain_association" "domain" {
   count = var.app_domain != "" ? 1 : 0
 
   app_id      = aws_amplify_app.admin_app.id
-  domain_name = var.app_domain
+  domain_name = "dependable.co.za"
 
   sub_domain {
     branch_name = aws_amplify_branch.main.branch_name
-    prefix      = ""
-  }
-
-  sub_domain {
-    branch_name = aws_amplify_branch.main.branch_name
-    prefix      = "www"
+    prefix      = "admin"
   }
 }
 
@@ -102,7 +99,17 @@ resource "aws_iam_role" "amplify_role" {
       {
         Effect = "Allow"
         Principal = {
-          Service = "amplify.amazonaws.com"
+          Service: [
+            "amplify.eu-west-1.amazonaws.com",
+            "amplify.amazonaws.com"
+          ]
+        }
+        Action = "sts:AssumeRole"
+      },
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "amplifybackend.amazonaws.com"
         }
         Action = "sts:AssumeRole"
       }
@@ -114,6 +121,40 @@ resource "aws_iam_role" "amplify_role" {
 resource "aws_iam_role_policy_attachment" "amplify_backend_deployment" {
   role       = aws_iam_role.amplify_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess-Amplify"
+}
+
+# Additional managed policies for WEB_COMPUTE
+resource "aws_iam_role_policy_attachment" "amplify_execution" {
+  role       = aws_iam_role.amplify_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmplifyBackendDeployFullAccess"
+}
+
+# Additional policy for WEB_COMPUTE platform (Next.js SSR)
+resource "aws_iam_role_policy" "amplify_compute_policy" {
+  name = "${var.app_name}-compute-policy"
+  role = aws_iam_role.amplify_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "amplify:*"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 # Custom policy for additional AWS service access (if needed)

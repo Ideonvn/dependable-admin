@@ -10,7 +10,7 @@ module "dependable-admin-app" {
   main_branch_name = "main"
 
   # Optional: Custom domain (configure in Route53 first)
-  # app_domain = "admin.dependable.co.za"
+  app_domain = var.app_domain
 
   # Environment variables for NextAuth and app
   environment_variables = {

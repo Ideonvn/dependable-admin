@@ -1,6 +1,6 @@
 variable "aws_region" {
   description = "The AWS region to create all resources in"
-  default     = "af-south-1"
+  default     = "eu-west-1"
 }
 
 # Amplify variables
@@ -34,4 +34,10 @@ variable "google_client_secret" {
   description = "Google OAuth Client Secret"
   type        = string
   sensitive   = true
+}
+
+variable "app_domain" {
+  description = "Custom domain for the admin app (leave empty to use Amplify default domain)"
+  type        = string
+  default     = ""
 }
