@@ -9,6 +9,11 @@ resource "aws_amplify_app" "admin_app" {
       phases:
         preBuild:
           commands:
+            - echo "AUTH_SECRET=$AUTH_SECRET" >> .env.production
+            - echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.production
+            - echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" >> .env.production
+            - echo "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET" >> .env.production
+            - echo "NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME" >> .env.production
             - npm ci --cache .npm --prefer-offline
         build:
           commands:
