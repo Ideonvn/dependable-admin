@@ -2,7 +2,7 @@ import { signIn } from "@/lib/auth"
  
 export default function SignIn() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0F1115]">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0F1115] p-4">
       <div className="max-w-md w-full bg-white dark:bg-[#121212] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Dependable Admin</h1>
