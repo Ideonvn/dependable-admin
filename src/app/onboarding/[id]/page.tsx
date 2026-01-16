@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useMemo, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Send, Upload as UploadIcon, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Plus, Send, Upload as UploadIcon, ArrowLeft, RefreshCw, Users, CheckCircle, Clock, Calendar } from 'lucide-react';
 import {
   schoolOnboardingApi,
   SchoolOnboarding,
   SchoolOnboardingRecord,
+  ClassSummary,
 } from '@/lib/schoolOnboarding';
+import { schoolsApi, SchoolWithStats } from '@/lib/schools';
 import EditableTable from '@/components/EditableTable';
 import ClassSummaryTable from '@/components/ClassSummaryTable';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -16,7 +18,9 @@ import AlertDialog from '@/components/AlertDialog';
 export default function OnboardingEdit({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const [school, setSchool] = useState<SchoolWithStats | null>(null);
   const [onboarding, setOnboarding] = useState<SchoolOnboarding | null>(null);
+  const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -28,6 +32,17 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
   const [submitDialog, setSubmitDialog] = useState(false);
   const [submitClassesDialog, setSubmitClassesDialog] = useState(false);
   const [alertDialog, setAlertDialog] = useState<{ isOpen: boolean; title: string; message: string; variant: 'success' | 'error' | 'info' }>({ isOpen: false, title: '', message: '', variant: 'info' });
+  // Toasts (non-blocking notifications)
+  const [toasts, setToasts] = useState<{ id: string; title?: string; message: string; variant?: 'success' | 'error' | 'info' }[]>([]);
+
+  const addToast = (toast: { title?: string; message: string; variant?: 'success' | 'error' | 'info' }) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setToasts((t) => [...t, { id, ...toast }]);
+    // auto-dismiss
+    setTimeout(() => {
+      setToasts((t) => t.filter((x) => x.id !== id));
+    }, 4000);
+  };
 
   // Function to load onboarding data
   const loadOnboardingData = async (showLoader = true) => {
@@ -35,93 +50,42 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
     else setRefreshing(true);
 
     try {
-      // In real app, fetch from API
-      const mockOnboarding: SchoolOnboarding = {
+      // Fetch school data from API
+      const schoolData = await schoolsApi.getSchool(id);
+      if (!schoolData) {
+        setSchool(null);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+      
+      setSchool(schoolData);
+
+      // Fetch records and classes from API
+      const [records, classesData] = await Promise.all([
+        schoolsApi.getRecords(id),
+        schoolsApi.getClasses(id),
+      ]);
+
+      const onboardingData: SchoolOnboarding = {
         id: id,
-        school_id: 'school-1',
+        school_id: schoolData.school_id,
         school: {
-          id: 'school-1',
-          name: 'Sunnydale Primary School',
-          picture_url: 'https://via.placeholder.com/150',
+          id: schoolData.school_id,
+          name: schoolData.school_name,
+          picture_url: schoolData.school_image_url || undefined,
           created_at: new Date().toISOString(),
         },
-        records: [
-          {
-            id: '1',
-            first_name: 'John',
-            last_name: 'Doe',
-            gender: 'male',
-            date_of_birth: '2015-03-15',
-            primary_name: 'Jane Doe',
-            primary_email: 'jane.doe@example.com',
-            class_name: 'Grade 1A',
-            status: 'pending',
-          },
-          {
-            id: '2',
-            first_name: 'Sarah',
-            last_name: 'Smith',
-            gender: 'female',
-            date_of_birth: '2014-07-22',
-            primary_name: 'John Smith',
-            primary_email: 'john.smith@example.com',
-            class_name: 'Grade 2B',
-            status: 'pending',
-          },
-          {
-            id: '3',
-            first_name: 'Mike',
-            last_name: 'Johnson',
-            gender: 'male',
-            date_of_birth: '2015-01-10',
-            primary_name: 'Emily Johnson',
-            primary_email: 'emily.j@example.com',
-            class_name: 'Grade 1A',
-            status: 'validated',
-          },
-          {
-            id: '4',
-            first_name: 'Emma',
-            last_name: 'Wilson',
-            gender: 'female',
-            date_of_birth: '2015-05-20',
-            primary_name: 'David Wilson',
-            primary_email: 'david.wilson@example.com',
-            class_name: 'Grade 1A',
-            status: 'error',
-            error_message: 'Failed to send validation email: Invalid email address format. Please update the primary email and try again.',
-          },
-          {
-            id: '5',
-            first_name: 'Oliver',
-            last_name: 'Brown',
-            gender: 'male',
-            date_of_birth: '2014-11-08',
-            primary_name: 'Lisa Brown',
-            primary_email: 'lisa.brown@example.com',
-            class_name: 'Grade 2B',
-            status: 'submitted',
-          },
-          {
-            id: '6',
-            first_name: 'Sophia',
-            last_name: 'Davis',
-            gender: 'female',
-            date_of_birth: '2015-02-14',
-            primary_name: 'Michael Davis',
-            primary_email: 'michael.davis@example.com',
-            class_name: 'Grade 1A',
-            status: 'created',
-          },
-        ],
+        records,
         created_at: new Date().toISOString(),
         status: 'draft',
       };
 
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setOnboarding(mockOnboarding);
+      setOnboarding(onboardingData);
+      setClasses(classesData);
     } catch (error) {
       console.error('Failed to load onboarding data:', error);
+      setSchool(null);
     } finally {
       if (showLoader) setLoading(false);
       else setRefreshing(false);
@@ -133,10 +97,8 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
     loadOnboardingData();
   }, [id]);
 
-  const classSummary = useMemo(() => {
-    if (!onboarding) return [];
-    return schoolOnboardingApi.getClassSummary(onboarding.records);
-  }, [onboarding]);
+  // Use classes provided by backend when available
+  const classSummary = useMemo(() => classes, [classes]);
 
   const handleUpdate = async (id: string, updates: Partial<SchoolOnboardingRecord>) => {
     if (!onboarding) return;
@@ -164,20 +126,15 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
       });
       setNewRecordId(null);
       
-      setAlertDialog({
-        isOpen: true,
-        title: 'Success',
-        message: 'New student record has been created successfully.',
-        variant: 'success',
-      });
+      addToast({ title: 'Success', message: 'New student record has been created successfully.', variant: 'success' });
     } else {
       // Update existing record
-      await schoolOnboardingApi.updateRecord(onboarding.id, id, updates);
+      const updated = await schoolOnboardingApi.updateRecord(onboarding.id, id, updates);
 
       setOnboarding({
         ...onboarding,
         records: onboarding.records.map((r) =>
-          r.id === id ? { ...r, ...updates } : r
+          r.id === id ? { ...r, ...updated } : r
         ),
       });
     }
@@ -234,12 +191,8 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
       records: onboarding.records.filter((r) => r.id !== deleteDialog.id),
     });
     
-    setAlertDialog({
-      isOpen: true,
-      title: 'Record Deleted',
-      message: 'The student record has been successfully deleted.',
-      variant: 'success',
-    });
+    addToast({ title: 'Deleted', message: 'The student record has been successfully deleted.', variant: 'success' });
+    setDeleteDialog({ isOpen: false, id: null });
   };
 
   const handleValidate = () => {
@@ -350,11 +303,11 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
     );
   }
 
-  if (!onboarding) {
+  if (!onboarding || !school) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-[#0F1115] flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Onboarding Not Found</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">School Not Found</h2>
           <button
             onClick={() => router.push('/')}
             className="text-[#1A1A6D] dark:text-[#20B2AA] hover:opacity-80"
@@ -381,35 +334,88 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
         </div>
 
         {/* School Info */}
-        <div className="bg-white dark:bg-[#121212] rounded-lg shadow border border-gray-200 dark:border-gray-800 p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {onboarding.school.picture_url && (
-                <img
-                  src={onboarding.school.picture_url}
-                  alt={onboarding.school.name}
-                  className="w-20 h-20 rounded-lg object-cover border border-gray-200 dark:border-gray-700"
-                />
+        <div className="bg-white dark:bg-[#121212] rounded-lg shadow border border-gray-200 dark:border-gray-800 mb-6 overflow-hidden">
+          <div className="relative">
+            {school.school_image_url ? (
+              <img src={school.school_image_url} alt={school.school_name} className="w-full h-28 object-cover opacity-40" />
+            ) : (
+              <div className="w-full h-28 bg-gray-100 dark:bg-gray-900" />
+            )}
+
+            <div className="absolute left-4 top-1/2 transform -translate-y-1/2 flex items-center gap-4">
+              {school.school_image_url ? (
+                <img src={school.school_image_url} alt={school.school_name} className="w-16 h-16 rounded-lg border-4 border-white dark:border-gray-800 shadow-lg object-cover" />
+              ) : (
+                <div className="w-16 h-16 rounded-lg border-4 border-white dark:border-gray-800 shadow-lg bg-white dark:bg-gray-800 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-gray-400 dark:text-gray-600" />
+                </div>
               )}
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {onboarding.school.name}
+
+              <div className="min-w-0">
+                <h1 className="text-lg md:text-2xl font-bold leading-tight md:truncate md:max-w-[28rem] text-gray-900 dark:text-gray-100">
+                  {school.school_name}
                 </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  {onboarding.records.length} student{onboarding.records.length !== 1 ? 's' : ''} •{' '}
-                  Created {new Date(onboarding.created_at).toLocaleDateString()}
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {school.statistics.total_records} record{school.statistics.total_records !== 1 ? 's' : ''} • {school.statistics.pending_count} pending
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => loadOnboardingData(false)}
-              disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Refresh data"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
+
+            <div className="absolute right-4 top-3">
+              <button
+                onClick={() => loadOnboardingData(false)}
+                disabled={refreshing}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Refresh data"
+              >
+                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          <div className="p-4">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <div className="w-20 bg-gray-50 dark:bg-gray-900 rounded-lg p-2 text-center">
+                <div className="text-xs text-gray-600 dark:text-gray-400">Total</div>
+                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{school.statistics.total_records}</div>
+              </div>
+
+              <div className="w-20 bg-green-50 dark:bg-green-950 rounded-lg p-2 text-center">
+                <div className="text-xs text-green-600 dark:text-green-400">Validated</div>
+                <div className="text-sm font-semibold text-green-700 dark:text-green-400">{school.statistics.validated_count}</div>
+              </div>
+
+              <div className="w-20 bg-yellow-50 dark:bg-yellow-950 rounded-lg p-2 text-center">
+                <div className="text-xs text-yellow-600 dark:text-yellow-400">Pending</div>
+                <div className="text-sm font-semibold text-yellow-700 dark:text-yellow-400">{school.statistics.pending_count}</div>
+              </div>
+
+              <div className="w-20 bg-blue-50 dark:bg-blue-950 rounded-lg p-2 text-center">
+                <div className="text-xs text-blue-600 dark:text-blue-400">Submitted</div>
+                <div className="text-sm font-semibold text-blue-700 dark:text-blue-400">{school.statistics.submitted_count}</div>
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
+                <span>Completion</span>
+                <span className="font-medium">{Math.round((school.statistics.submitted_count / Math.max(1, school.statistics.total_records)) * 100)}%</span>
+              </div>
+              <div className="h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[#1A1A6D] to-[#87CEFA] dark:from-[#20B2AA] dark:to-[#4682B4] transition-all duration-300"
+                  style={{ width: `${Math.round((school.statistics.submitted_count / Math.max(1, school.statistics.total_records)) * 100)}%` }}
+                />
+              </div>
+            </div>
+
+            {school.last_activity && (
+              <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Last activity {new Date(school.last_activity).toLocaleDateString()}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -419,7 +425,7 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
             <div className="bg-white dark:bg-[#121212] rounded-lg shadow border border-gray-200 dark:border-gray-800 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Student Records</h2>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={handleAdd}
                     disabled={newRecordId !== null}
@@ -529,6 +535,26 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
         message={alertDialog.message}
         variant={alertDialog.variant}
       />
+
+      {/* Toast container */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`max-w-sm w-full px-4 py-3 rounded-lg shadow-md border transition-opacity bg-white dark:bg-[#111217] border-gray-200 dark:border-gray-800 ${t.variant === 'success' ? 'ring-1 ring-green-200' : ''}`}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-1">
+                {t.title && <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.title}</div>}
+                <div className="text-sm text-gray-700 dark:text-gray-300">{t.message}</div>
+              </div>
+              <button onClick={() => setToasts((s) => s.filter(x => x.id !== t.id))} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                ✕
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

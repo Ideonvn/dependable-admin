@@ -1,12 +1,26 @@
 // API client configuration
 import axios from 'axios';
 
+// TODO: Replace this with proper authentication handling
+const TEMP_BEARER_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJEZXBlbmRhYmxlIiwic3ViIjoiY2EwOWRmYWMtZGZkOS00YTcxLTgxOGYtMDAyNjUxZDAyNGVkIiwiZXhwIjoxNzY5MTkwMjgyLCJpYXQiOjE3Njg1ODU0ODIsImp0aSI6IjljYWVhN2VjYzRiZjZlZmU1Zjg3ZDk2MzkxZTY2M2U5MGI4YWYyNjk4YTdmMjdjYjY5NGVkZjQxZDI1MDgxMzFkNGFiYWUxYTEzOWU4NTc2MmE0ZWRmMWZmYjQ4ZWNhYTEwYWNiODAxYWRhNjMxMTg0ZDhhOTkzYzI2NDY1ZTNkNzkzNzc3OWQ2YzRhOTEzZjc1NmYxNTdiZjNlOGE2ZDFjZmU2ODk1NjgwMmE0MjczMTYzZTkyMjdiMjEyNjk2OTM1ZWY3NzQwIn0.NpOLa72iVIrgzFzQv-MnryD45k-EJ_xRgBIr4dN75yA'; // Replace with your actual token
+
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Add Bearer token to all requests
+apiClient.interceptors.request.use(
+  (config) => {
+    if (TEMP_BEARER_TOKEN) {
+      config.headers.Authorization = `Bearer ${TEMP_BEARER_TOKEN}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Types
 export interface ImportBatch {

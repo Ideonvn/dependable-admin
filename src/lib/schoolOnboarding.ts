@@ -35,7 +35,21 @@ export interface ClassSummary {
   is_fixed: boolean;
 }
 
+export interface OperationResult {
+  total: number;
+  successful: number;
+  failed: number;
+  errors: any[];
+}
+
+export interface CreateClassResult {
+  name: string;
+  status: string;
+}
+
 // Mock API for school onboarding
+import apiClient from '@/lib/api';
+
 export const schoolOnboardingApi = {
   // Create school and import CSV
   createSchoolOnboarding: async (
@@ -43,85 +57,101 @@ export const schoolOnboardingApi = {
     schoolPicture: File,
     csvFile: File
   ): Promise<SchoolOnboarding> => {
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Parse CSV (mock)
-    const mockRecords: SchoolOnboardingRecord[] = [
-      {
-        id: '1',
-        first_name: 'John',
-        last_name: 'Doe',
-        gender: 'male',
-        date_of_birth: '2015-03-15',
-        primary_name: 'Jane Doe',
-        primary_email: 'jane.doe@example.com',
-        class_name: 'Grade 1A',
-        status: 'pending',
-      },
-      {
-        id: '2',
-        first_name: 'Sarah',
-        last_name: 'Smith',
-        gender: 'female',
-        date_of_birth: '2014-07-22',
-        primary_name: 'John Smith',
-        primary_email: 'john.smith@example.com',
-        class_name: 'Grade 2B',
-        status: 'pending',
-      },
-      {
-        id: '3',
-        first_name: 'Mike',
-        last_name: 'Johnson',
-        gender: 'male',
-        date_of_birth: '2015-01-10',
-        primary_name: 'Emily Johnson',
-        primary_email: 'emily.j@example.com',
-        class_name: 'Grade 1A',
-        status: 'pending',
-      },
-    ];
+    // Call backend to create onboarding using multipart/form-data
+    const form = new FormData();
+    form.append('school_name', schoolName);
+    if (schoolPicture) form.append('school_image', schoolPicture);
+    if (csvFile) form.append('csv_file', csvFile);
 
-    return {
-      id: 'onboarding-1',
-      school_id: 'school-1',
+    const response = await apiClient.post('/admin/onboarding/schools', form, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    const data = response.data;
+
+    // Construct a minimal SchoolOnboarding object for the frontend
+    const result: SchoolOnboarding = {
+      id: data.school_id || data.schoolId || '',
+      school_id: data.school_id || data.schoolId || '',
       school: {
-        id: 'school-1',
+        id: data.school_id || data.schoolId || '',
         name: schoolName,
-        picture_url: URL.createObjectURL(schoolPicture),
+        picture_url: schoolPicture ? URL.createObjectURL(schoolPicture) : undefined,
         created_at: new Date().toISOString(),
       },
-      records: mockRecords,
+      records: [],
       created_at: new Date().toISOString(),
       status: 'draft',
     };
+
+    return result;
   },
 
-  // Update a record
+  // Update a record (PATCH)
   updateRecord: async (
     onboardingId: string,
     recordId: string,
     updates: Partial<SchoolOnboardingRecord>
   ): Promise<SchoolOnboardingRecord> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return { ...updates, id: recordId } as SchoolOnboardingRecord;
+    const payload: any = {
+      ...updates,
+      gender: updates.gender ? updates.gender.toString().toUpperCase() : undefined,
+    };
+
+    const response = await apiClient.patch(
+      `/admin/onboarding/schools/${onboardingId}/records/${recordId}`,
+      Object.fromEntries(Object.entries(payload).filter(([, v]) => v !== undefined))
+    );
+
+    const data = response.data;
+    return {
+      id: data.id,
+      first_name: data.first_name,
+      last_name: data.last_name,
+      gender: (data.gender || '').toString().toLowerCase() as 'male' | 'female' | 'other',
+      date_of_birth: data.date_of_birth || '',
+      primary_name: data.primary_name || '',
+      primary_email: data.primary_email || '',
+      class_name: data.class_name || '',
+      status: (data.status || '').toString().toLowerCase() as SchoolOnboardingRecord['status'],
+      error_message: data.error_message,
+    };
   },
 
-  // Delete a record
+  // Delete a record (DELETE)
   deleteRecord: async (onboardingId: string, recordId: string): Promise<void> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await apiClient.delete(`/admin/onboarding/schools/${onboardingId}/records/${recordId}`);
   },
 
-  // Create a new record
+  // Create a new record (POST)
   createRecord: async (
     onboardingId: string,
     record: Omit<SchoolOnboardingRecord, 'id'>
   ): Promise<SchoolOnboardingRecord> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return {
+    const payload: any = {
       ...record,
-      id: `record-${Date.now()}`,
+      gender: record.gender ? record.gender.toString().toUpperCase() : undefined,
+    };
+
+    const response = await apiClient.post(
+      `/admin/onboarding/schools/${onboardingId}/records/`,
+      payload
+    );
+
+    const data = response.data;
+    return {
+      id: data.id,
+      first_name: data.first_name,
+      last_name: data.last_name,
+      gender: (data.gender || '').toString().toLowerCase() as 'male' | 'female' | 'other',
+      date_of_birth: data.date_of_birth || '',
+      primary_name: data.primary_name || '',
+      primary_email: data.primary_email || '',
+      class_name: data.class_name || '',
+      status: (data.status || '').toString().toLowerCase() as SchoolOnboardingRecord['status'],
+      error_message: data.error_message,
     };
   },
 
@@ -129,24 +159,31 @@ export const schoolOnboardingApi = {
   validateRecords: async (
     onboardingId: string,
     recordIds?: string[]
-  ): Promise<void> => {
-    await new Promise(resolve => setTimeout(resolve, 1500));
+  ): Promise<OperationResult> => {
+    const payload = {};
+    const response = await apiClient.post(`/admin/onboarding/schools/${onboardingId}/records/validate`, payload);
+    return response.data as OperationResult;
   },
 
   // Submit records to core system
   submitRecords: async (
     onboardingId: string,
     recordIds?: string[]
-  ): Promise<void> => {
-    await new Promise(resolve => setTimeout(resolve, 2000));
+  ): Promise<OperationResult> => {
+    const payload = {};
+    const response = await apiClient.post(`/admin/onboarding/schools/${onboardingId}/records/submit`, payload);
+    return response.data as OperationResult;
   },
 
   // Create classes in core system
   createClasses: async (
     onboardingId: string,
     classes: ClassSummary[]
-  ): Promise<void> => {
-    await new Promise(resolve => setTimeout(resolve, 1500));
+  ): Promise<CreateClassResult[]> => {
+    // For now backend expects an empty JSON payload; send {}
+    const payload = {};
+    const response = await apiClient.post(`/admin/onboarding/schools/${onboardingId}/classes`, payload);
+    return response.data as CreateClassResult[];
   },
 
   // Get class summary
