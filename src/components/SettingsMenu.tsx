@@ -1,9 +1,12 @@
-'use client';
+"use client";
 
 import { useState, useRef, useEffect } from 'react';
 import { User } from 'next-auth';
+import { signOut } from 'next-auth/react';
 import { Settings, LogOut, Monitor, Sun, Moon, Check } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { tokenService } from '../lib/tokenService';
+import { setGoogleIdToken } from '../lib/api';
 
 interface SettingsMenuProps {
   user: User;
@@ -29,12 +32,17 @@ export default function SettingsMenu({ user }: SettingsMenuProps) {
     }
   }, [isOpen]);
 
-  const handleSignOut = () => {
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/api/auth/signout';
-    document.body.appendChild(form);
-    form.submit();
+  const handleSignOut = async () => {
+    try {
+      // Sign out via NextAuth without immediate redirect so we can clear stored tokens
+      await signOut({ redirect: false });
+    } finally {
+      // Ensure backend token data is removed and api client Google token cleared
+      tokenService.clearTokenData();
+      setGoogleIdToken(null);
+      // Redirect to homepage (or let NextAuth handle redirect if desired)
+      window.location.href = '/';
+    }
   };
 
   const themeOptions: { value: string; label: string; icon: typeof Sun }[] = [
