@@ -1,5 +1,6 @@
 // API client configuration
 import axios from 'axios';
+import { tokenService } from './tokenService';
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
@@ -7,6 +8,31 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Store for the current session's Google ID token (set by the app on mount)
+let currentGoogleIdToken: string | null = null;
+
+export const setGoogleIdToken = (token: string | null) => {
+  currentGoogleIdToken = token;
+};
+
+// Add Bearer token to all requests (with automatic refresh)
+apiClient.interceptors.request.use(
+  async (config) => {
+    // Get valid token (will refresh if expired)
+    const accessToken = await tokenService.getValidToken(currentGoogleIdToken || undefined);
+    
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    } else {
+      // No valid token available - requests will likely fail with 401
+      console.warn('No valid access token available for API request');
+    }
+    
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Types
 export interface ImportBatch {

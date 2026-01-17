@@ -42,10 +42,7 @@ export default function ClassSummaryTable({ classes, onSubmitClasses, isSubmitti
                 Students
               </th>
               <th className="px-4 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">
-                Validated
-              </th>
-              <th className="px-4 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400 uppercase">
-                Status
+                In System
               </th>
             </tr>
           </thead>
@@ -58,19 +55,14 @@ export default function ClassSummaryTable({ classes, onSubmitClasses, isSubmitti
                 <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 text-center">
                   {cls.total_students}
                 </td>
-                <td className="px-4 py-3 text-sm text-center">
-                  <span className="text-green-600 dark:text-green-400 font-medium">
-                    {cls.validated_students}
-                  </span>
-                </td>
                 <td className="px-4 py-3 text-center">
                   {cls.is_fixed ? (
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
-                      Fixed
+                      In system
                     </span>
                   ) : (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400">
-                      Pending
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-400">
+                      Not in system
                     </span>
                   )}
                 </td>

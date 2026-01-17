@@ -81,7 +81,7 @@ export default function DashboardClient() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
           {schools.map((school) => (
-            <SchoolCard key={school.id} school={school} />
+            <SchoolCard key={school.school_id} school={school} />
           ))}
         </div>
       )}

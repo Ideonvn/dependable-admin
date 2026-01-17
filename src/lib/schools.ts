@@ -1,76 +1,106 @@
-import { School, SchoolOnboarding } from './schoolOnboarding';
+import { School, SchoolOnboardingRecord, ClassSummary } from './schoolOnboarding';
+import apiClient from './api';
 
-// Extend the School type to include onboarding stats
-export interface SchoolWithStats extends School {
-  total_students: number;
-  pending_students: number;
-  validated_students: number;
-  submitted_students: number;
-  last_activity?: string;
-  onboarding_status?: 'draft' | 'validating' | 'validated' | 'submitted' | 'completed';
+// API Response types
+export interface ClassInfo {
+  class_name: string;
+  count: number;
+  exists_in_system: boolean;
 }
 
-// Mock API for schools
+export interface SchoolStatistics {
+  total_records: number;
+  pending_count: number;
+  validated_count: number;
+  submitted_count: number;
+  failed_count: number;
+  error_count: number;
+  unique_classes: ClassInfo[];
+}
+
+export interface SchoolWithStats {
+  school_id: string;
+  school_name: string;
+  school_image_url: string | null;
+  statistics: SchoolStatistics;
+  last_activity?: string;
+}
+
+// API for schools
 export const schoolsApi = {
-  // Get all schools
+  // Get all schools with onboarding statistics
   getAllSchools: async (): Promise<SchoolWithStats[]> => {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    return [
-      {
-        id: 'school-1',
-        name: 'Sunnydale Primary School',
-        picture_url: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=400',
-        created_at: '2024-01-15T10:00:00Z',
-        total_students: 245,
-        pending_students: 12,
-        validated_students: 200,
-        submitted_students: 33,
-        last_activity: '2024-01-20T14:30:00Z',
-        onboarding_status: 'validating',
-      },
-      {
-        id: 'school-2',
-        name: 'Riverside High School',
-        picture_url: 'https://images.unsplash.com/photo-1562774053-701939374585?w=400',
-        created_at: '2024-01-10T09:00:00Z',
-        total_students: 420,
-        pending_students: 0,
-        validated_students: 0,
-        submitted_students: 420,
-        last_activity: '2024-01-18T11:00:00Z',
-        onboarding_status: 'completed',
-      },
-      {
-        id: 'school-3',
-        name: 'Maple Grove Elementary',
-        picture_url: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=400',
-        created_at: '2024-01-12T08:30:00Z',
-        total_students: 180,
-        pending_students: 45,
-        validated_students: 135,
-        submitted_students: 0,
-        last_activity: '2024-01-19T16:45:00Z',
-        onboarding_status: 'draft',
-      },
-      {
-        id: 'school-4',
-        name: 'Oakwood Academy',
-        picture_url: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=400',
-        created_at: '2024-01-08T11:15:00Z',
-        total_students: 312,
-        pending_students: 0,
-        validated_students: 312,
-        submitted_students: 0,
-        last_activity: '2024-01-21T09:20:00Z',
-        onboarding_status: 'validated',
-      },
-    ];
+    const response = await apiClient.get<SchoolWithStats[]>('/admin/onboarding/schools');
+    return response.data;
   },
 
   // Get a specific school
   getSchool: async (schoolId: string): Promise<SchoolWithStats | null> => {
-    const schools = await schoolsApi.getAllSchools();
-    return schools.find(s => s.id === schoolId) || null;
+    try {
+      const response = await apiClient.get<SchoolWithStats>(`/admin/onboarding/schools/${schoolId}`);
+      return response.data;
+    } catch (error) {
+      // Return null if school not found
+      return null;
+    }
+  },
+  // Get records for a specific school
+  getRecords: async (schoolId: string): Promise<SchoolOnboardingRecord[]> => {
+    try {
+      const response = await apiClient.get<any[]>(`/admin/onboarding/schools/${schoolId}/records`);
+
+      // Map API record shape to local SchoolOnboardingRecord
+      return response.data.map((r) => {
+        // Map gender
+        let gender: SchoolOnboardingRecord['gender'] = 'other';
+        if (typeof r.gender === 'string') {
+          const g = r.gender.toLowerCase();
+          if (g === 'male') gender = 'male';
+          else if (g === 'female') gender = 'female';
+        }
+
+        // Map status
+        let status: SchoolOnboardingRecord['status'] = 'pending';
+        if (typeof r.status === 'string') {
+          const s = r.status.toLowerCase();
+          if (s === 'pending') status = 'pending';
+          else if (s === 'validated') status = 'validated';
+          else if (s === 'submitted') status = 'submitted';
+          else if (s === 'error' || s === 'failed') status = 'error';
+          else if (s === 'created') status = 'created';
+        }
+
+        return {
+          id: r.id,
+          first_name: r.first_name || '',
+          last_name: r.last_name || '',
+          gender,
+          date_of_birth: r.date_of_birth || '',
+          primary_name: r.primary_name || '',
+          primary_email: r.primary_email || '',
+          class_name: r.class_name || '',
+          status,
+          error_message: r.error_message,
+        } as SchoolOnboardingRecord;
+      });
+    } catch (error) {
+      return [];
+    }
+  },
+  // Get classes summary for a specific school
+  getClasses: async (schoolId: string): Promise<ClassSummary[]> => {
+    try {
+      const response = await apiClient.get<any[]>(`/admin/onboarding/schools/${schoolId}/classes`);
+
+      // Map API class shape to local ClassSummary
+      return response.data.map((c) => ({
+        class_name: c.class_name || '',
+        total_students: typeof c.count === 'number' ? c.count : Number(c.count) || 0,
+        validated_students: 0, // API doesn't provide validated count per class
+        is_fixed: !!c.exists_in_system,
+      } as ClassSummary));
+    } catch (error) {
+      return [];
+    }
   },
 };
