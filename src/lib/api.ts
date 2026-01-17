@@ -1,8 +1,6 @@
 // API client configuration
 import axios from 'axios';
-
-// TODO: Replace this with proper authentication handling
-const TEMP_BEARER_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJEZXBlbmRhYmxlIiwic3ViIjoiY2EwOWRmYWMtZGZkOS00YTcxLTgxOGYtMDAyNjUxZDAyNGVkIiwiZXhwIjoxNzY5MTkwMjgyLCJpYXQiOjE3Njg1ODU0ODIsImp0aSI6IjljYWVhN2VjYzRiZjZlZmU1Zjg3ZDk2MzkxZTY2M2U5MGI4YWYyNjk4YTdmMjdjYjY5NGVkZjQxZDI1MDgxMzFkNGFiYWUxYTEzOWU4NTc2MmE0ZWRmMWZmYjQ4ZWNhYTEwYWNiODAxYWRhNjMxMTg0ZDhhOTkzYzI2NDY1ZTNkNzkzNzc3OWQ2YzRhOTEzZjc1NmYxNTdiZjNlOGE2ZDFjZmU2ODk1NjgwMmE0MjczMTYzZTkyMjdiMjEyNjk2OTM1ZWY3NzQwIn0.NpOLa72iVIrgzFzQv-MnryD45k-EJ_xRgBIr4dN75yA'; // Replace with your actual token
+import { tokenService } from './tokenService';
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
@@ -11,12 +9,26 @@ const apiClient = axios.create({
   },
 });
 
-// Add Bearer token to all requests
+// Store for the current session's Google ID token (set by the app on mount)
+let currentGoogleIdToken: string | null = null;
+
+export const setGoogleIdToken = (token: string | null) => {
+  currentGoogleIdToken = token;
+};
+
+// Add Bearer token to all requests (with automatic refresh)
 apiClient.interceptors.request.use(
-  (config) => {
-    if (TEMP_BEARER_TOKEN) {
-      config.headers.Authorization = `Bearer ${TEMP_BEARER_TOKEN}`;
+  async (config) => {
+    // Get valid token (will refresh if expired)
+    const accessToken = await tokenService.getValidToken(currentGoogleIdToken || undefined);
+    
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    } else {
+      // No valid token available - requests will likely fail with 401
+      console.warn('No valid access token available for API request');
     }
+    
     return config;
   },
   (error) => Promise.reject(error)

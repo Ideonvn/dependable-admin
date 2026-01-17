@@ -165,4 +165,143 @@ When setting up OAuth consent screen, choose "Internal" to restrict to your orga
 
 ---
 
-**Ready to test!** Follow the setup steps above and you'll have Google authentication working in minutes. 🎉
+# 🔄 Backend Token Management (NEW)
+
+## Overview
+
+The authentication system now includes **automatic backend token management**. When users sign in with Google, the system exchanges the Google ID token for your backend API token and manages token refresh automatically.
+
+## How It Works
+
+### Token Exchange Flow
+
+1. **User signs in with Google** → NextAuth receives Google ID token
+2. **AuthInitializer detects session** → Automatically calls your backend
+3. **Backend token exchange** → `POST /auth/google?token=<google_id_token>`
+4. **Token stored** → Backend `access_token` saved in localStorage
+5. **API requests** → All requests automatically include `Authorization: Bearer <token>`
+6. **Auto-refresh** → Expired tokens refreshed automatically before requests
+
+### New Components
+
+#### `src/lib/tokenService.ts`
+Token management service that:
+- Stores backend tokens in localStorage
+- Checks token expiry (with 1-minute buffer)
+- Exchanges Google ID token for backend token
+- Auto-refreshes expired tokens
+
+#### `src/components/AuthInitializer.tsx`
+Client component that:
+- Wraps your app in root layout
+- Syncs NextAuth session with backend tokens
+- Triggers initial token exchange on login
+- Clears tokens on logout
+
+#### Updated: `src/lib/api.ts`
+API client now:
+- Uses dynamic tokens instead of hardcoded token
+- Has async request interceptor
+- Auto-refreshes tokens before each request
+- Adds `Authorization: Bearer <token>` to all requests
+
+#### Updated: `src/lib/auth.ts`
+NextAuth config enhanced with:
+- JWT callback that stores Google ID token
+- Session callback that passes token to client
+- `access_type: "offline"` for token refresh
+
+### Backend API Endpoint Required
+
+Your backend must implement:
+
+**POST** `/auth/google?token=<google_id_token>`
+
+**Expected Response:**
+```json
+{
+  "user_id": "7f3c2a1e-9d4e-4c6b-b2c4-3a1e5f9c8d21",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "issued_at": "2026-01-17T18:30:00Z",
+  "expires_at": "2026-01-17T19:30:00Z",
+  "refresh_token": "d2b7c2a1-5c3e-4a92-9f10-8f6d5c3b2a1e"
+}
+```
+
+### Environment Variables
+
+Add to `.env.local`:
+
+```env
+# Backend API Base URL
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+## Usage
+
+All API calls now automatically include the backend token:
+
+```typescript
+import { schoolsApi } from '@/lib/schools';
+
+// Token automatically added - no manual handling needed!
+const schools = await schoolsApi.getAllSchools();
+const records = await schoolsApi.getRecords(schoolId);
+```
+
+## Token Storage
+
+Tokens are stored in `localStorage` with key `backend_token_data`:
+
+```json
+{
+  "access_token": "eyJhbGci...",
+  "expires_at": "2026-01-17T19:30:00Z",
+  "refresh_token": "d2b7c2a1-...",
+  "user_id": "7f3c2a1e-..."
+}
+```
+
+## Testing the Integration
+
+1. **Sign in with Google**
+   - Check browser console for: `"Backend token initialized successfully"`
+   - Check localStorage for `backend_token_data`
+
+2. **Make API requests**
+   - Open Network tab in DevTools
+   - Look for `Authorization: Bearer <token>` header in requests
+   - Verify requests return 200 status
+
+3. **Test token refresh**
+   - Edit `expires_at` in localStorage to a past date
+   - Make an API request
+   - Verify new token is fetched and stored
+
+## Troubleshooting
+
+### "No valid access token available for API request"
+- User not signed in with Google
+- Token exchange failed (check Network tab for errors to `/auth/google`)
+- Verify backend endpoint is accessible
+
+### 401 Unauthorized errors
+- Backend token expired and refresh failed
+- Backend endpoint unreachable
+- Check backend logs for authentication errors
+
+### Token not refreshing
+- Google ID token missing from session
+- Verify NextAuth callbacks are configured correctly
+- Check that `AuthInitializer` is wrapping your app in layout
+
+## Security Notes
+
+- Backend tokens stored in localStorage (consider httpOnly cookies for production)
+- Google ID token kept in memory only
+- Tokens automatically cleared on logout
+- 1-minute expiry buffer prevents race conditions
+
+---
+
+**Ready to test!** Sign in with Google and all API requests will automatically use your backend token. 🎉
