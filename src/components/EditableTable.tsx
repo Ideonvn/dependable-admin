@@ -1,20 +1,24 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Edit2, Trash2, Check, X, ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
+import { Edit2, Trash2, Check, X, ChevronDown, ChevronRight, AlertCircle, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { SchoolOnboardingRecord } from '@/lib/schoolOnboarding';
+import { schoolsApi, RecordDetails, RecordAction } from '@/lib/schools';
 
 interface EditableTableProps {
   records: SchoolOnboardingRecord[];
   onUpdate: (id: string, updates: Partial<SchoolOnboardingRecord>) => void;
   onDelete: (id: string) => void;
   initialEditingId?: string | null;
+  schoolId: string;
 }
 
-export default function EditableTable({ records, onUpdate, onDelete, initialEditingId }: EditableTableProps) {
+export default function EditableTable({ records, onUpdate, onDelete, initialEditingId, schoolId }: EditableTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<SchoolOnboardingRecord>>({});
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [recordDetails, setRecordDetails] = useState<Map<string, RecordDetails>>(new Map());
+  const [loadingActions, setLoadingActions] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<keyof SchoolOnboardingRecord>('first_name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filters, setFilters] = useState({
@@ -106,14 +110,36 @@ export default function EditableTable({ records, onUpdate, onDelete, initialEdit
     setEditData({});
   };
 
-  const toggleRowExpand = (id: string) => {
+  const toggleRowExpand = async (id: string) => {
     const newExpanded = new Set(expandedRows);
     if (newExpanded.has(id)) {
       newExpanded.delete(id);
     } else {
       newExpanded.add(id);
+      // Fetch actions if not already loaded
+      if (!recordDetails.has(id) && !id.startsWith('temp-')) {
+        await fetchRecordActions(id);
+      }
     }
     setExpandedRows(newExpanded);
+  };
+
+  const fetchRecordActions = async (recordId: string) => {
+    setLoadingActions(prev => new Set(prev).add(recordId));
+    try {
+      const details = await schoolsApi.getRecordDetails(schoolId, recordId);
+      if (details) {
+        setRecordDetails(prev => new Map(prev).set(recordId, details));
+      }
+    } catch (error) {
+      console.error('Failed to fetch record actions:', error);
+    } finally {
+      setLoadingActions(prev => {
+        const next = new Set(prev);
+        next.delete(recordId);
+        return next;
+      });
+    }
   };
 
   const saveEdit = () => {
@@ -303,18 +329,17 @@ export default function EditableTable({ records, onUpdate, onDelete, initialEdit
                   ) : (
                     <>
                       <td className="px-4 py-3">
-                        {record.status === 'error' && record.error_message ? (
-                          <button
-                            onClick={() => toggleRowExpand(record.id)}
-                            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
-                          >
-                            {expandedRows.has(record.id) ? (
-                              <ChevronDown className="w-4 h-4" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4" />
-                            )}
-                          </button>
-                        ) : null}
+                        <button
+                          onClick={() => toggleRowExpand(record.id)}
+                          className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                          disabled={record.id.startsWith('temp-')}
+                        >
+                          {expandedRows.has(record.id) ? (
+                            <ChevronDown className="w-4 h-4" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4" />
+                          )}
+                        </button>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{record.first_name}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{record.last_name}</td>
@@ -355,16 +380,62 @@ export default function EditableTable({ records, onUpdate, onDelete, initialEdit
                     </>
                   )}
                 </tr>
-                {/* Error message row */}
-                {record.status === 'error' && record.error_message && expandedRows.has(record.id) && (
-                  <tr key={`${record.id}-error`} className="bg-red-50 dark:bg-red-900/10">
-                    <td colSpan={10} className="px-4 py-3">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-red-900 dark:text-red-300 mb-1">Error Details</p>
-                          <p className="text-sm text-red-800 dark:text-red-400">{record.error_message}</p>
-                        </div>
+                {/* Expanded row with actions */}
+                {expandedRows.has(record.id) && (
+                  <tr key={`${record.id}-expanded`} className="bg-gray-50 dark:bg-gray-900/50">
+                    <td colSpan={10} className="px-4 py-4">
+                      <div className="ml-8">
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Record Actions</h4>
+                        
+                        {loadingActions.has(record.id) ? (
+                          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span className="text-sm">Loading actions...</span>
+                          </div>
+                        ) : recordDetails.has(record.id) ? (
+                          <div className="space-y-3">
+                            {recordDetails.get(record.id)!.actions.length === 0 ? (
+                              <p className="text-sm text-gray-500 dark:text-gray-400 italic">No actions recorded yet</p>
+                            ) : (
+                              recordDetails.get(record.id)!.actions.map((action, index) => (
+                                <div key={action.id} className="flex gap-3 pb-3 border-b border-gray-200 dark:border-gray-800 last:border-0">
+                                  <div className="flex-shrink-0 mt-1">
+                                    {action.success === 'success' ? (
+                                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                                    ) : action.success === 'error' ? (
+                                      <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                                    ) : (
+                                      <Clock className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-baseline gap-2 mb-1">
+                                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                        {action.action_type.replace(/_/g, ' ')}
+                                      </span>
+                                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                                        {new Date(action._created_at).toLocaleString()}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">{action.message}</p>
+                                    {action.raw_metadata && (
+                                      <details className="mt-2">
+                                        <summary className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer hover:text-gray-900 dark:hover:text-gray-100">
+                                          View metadata
+                                        </summary>
+                                        <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-x-auto text-gray-900 dark:text-gray-100">
+                                          {JSON.stringify(action.raw_metadata, null, 2)}
+                                        </pre>
+                                      </details>
+                                    )}
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500 dark:text-gray-400 italic">Failed to load actions</p>
+                        )}
                       </div>
                     </td>
                   </tr>

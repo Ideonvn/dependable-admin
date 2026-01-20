@@ -1,6 +1,21 @@
 import { School, SchoolOnboardingRecord, ClassSummary } from './schoolOnboarding';
 import apiClient from './api';
 
+export interface RecordAction {
+  id: string;
+  onboarding_record_id: string;
+  action_type: string;
+  user_id: string | null;
+  success: string;
+  message: string;
+  raw_metadata: any;
+  _created_at: string;
+}
+
+export interface RecordDetails extends SchoolOnboardingRecord {
+  actions: RecordAction[];
+}
+
 // API Response types
 export interface ClassInfo {
   class_name: string;
@@ -101,6 +116,49 @@ export const schoolsApi = {
       } as ClassSummary));
     } catch (error) {
       return [];
+    }
+  },
+  // Get record details with actions
+  getRecordDetails: async (schoolId: string, recordId: string): Promise<RecordDetails | null> => {
+    try {
+      const response = await apiClient.get<any>(`/admin/onboarding/schools/${schoolId}/records/${recordId}`);
+      const r = response.data;
+
+      // Map gender
+      let gender: SchoolOnboardingRecord['gender'] = 'other';
+      if (typeof r.gender === 'string') {
+        const g = r.gender.toLowerCase();
+        if (g === 'male') gender = 'male';
+        else if (g === 'female') gender = 'female';
+      }
+
+      // Map status
+      let status: SchoolOnboardingRecord['status'] = 'pending';
+      if (typeof r.status === 'string') {
+        const s = r.status.toLowerCase();
+        if (s === 'pending') status = 'pending';
+        else if (s === 'validated') status = 'validated';
+        else if (s === 'submitted') status = 'submitted';
+        else if (s === 'error' || s === 'failed') status = 'error';
+        else if (s === 'created') status = 'created';
+      }
+
+      return {
+        id: r.id,
+        first_name: r.first_name || '',
+        last_name: r.last_name || '',
+        gender,
+        date_of_birth: r.date_of_birth || '',
+        primary_name: r.primary_name || '',
+        primary_email: r.primary_email || '',
+        class_name: r.class_name || '',
+        status,
+        error_message: r.error_message,
+        actions: r.actions || [],
+      };
+    } catch (error) {
+      console.error('Failed to fetch record details:', error);
+      return null;
     }
   },
 };

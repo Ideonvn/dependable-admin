@@ -466,6 +466,7 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
                 initialEditingId={newRecordId}
+                schoolId={id}
               />
             </div>
           </div>
