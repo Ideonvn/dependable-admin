@@ -4,6 +4,8 @@ import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { SessionProvider } from "next-auth/react";
 import AuthInitializer from "@/components/AuthInitializer";
+import { auth } from "@/lib/auth";
+import AppHeader from "@/components/AppHeader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,15 +22,17 @@ export const metadata: Metadata = {
   description: "Admin interface for Dependable school management",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
+  
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 dark:bg-[#0F1115]`}
       >
         <SessionProvider>
           <AuthInitializer>
@@ -39,7 +43,10 @@ export default function RootLayout({
               disableTransitionOnChange
               themes={['light', 'dark']}
             >
-              {children}
+              <div className="min-h-screen">
+                {session?.user && <AppHeader user={session.user} />}
+                {children}
+              </div>
             </ThemeProvider>
           </AuthInitializer>
         </SessionProvider>

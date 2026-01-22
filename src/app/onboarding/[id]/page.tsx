@@ -9,11 +9,12 @@ import {
   SchoolOnboardingRecord,
   ClassSummary,
 } from '@/lib/schoolOnboarding';
-import { schoolsApi, SchoolWithStats } from '@/lib/schools';
+import { onboardingApi, SchoolWithStats } from '@/lib/schools';
 import EditableTable from '@/components/EditableTable';
 import ClassSummaryTable from '@/components/ClassSummaryTable';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import AlertDialog from '@/components/AlertDialog';
+import SchoolProfileImage from '@/components/SchoolProfileImage';
 
 export default function OnboardingEdit({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -51,7 +52,7 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
 
     try {
       // Fetch school data from API
-      const schoolData = await schoolsApi.getSchool(id);
+      const schoolData = await onboardingApi.getSchool(id);
       if (!schoolData) {
         setSchool(null);
         setLoading(false);
@@ -63,8 +64,8 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
 
       // Fetch records and classes from API
       const [records, classesData] = await Promise.all([
-        schoolsApi.getRecords(id),
-        schoolsApi.getClasses(id),
+        onboardingApi.getRecords(id),
+        onboardingApi.getClasses(id),
       ]);
 
       const onboardingData: SchoolOnboarding = {
@@ -73,7 +74,7 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
         school: {
           id: schoolData.school_id,
           name: schoolData.school_name,
-          picture_url: schoolData.school_image_url || undefined,
+          image_filename: schoolData.image_filename || undefined,
           created_at: new Date().toISOString(),
         },
         records,
@@ -325,37 +326,41 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
         {/* Header */}
         <div className="mb-6">
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/onboarding')}
             className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Dashboard
+            Back to Onboarding
           </button>
         </div>
 
         {/* School Info */}
         <div className="bg-white dark:bg-[#121212] rounded-lg shadow border border-gray-200 dark:border-gray-800 mb-6 overflow-hidden">
-          <div className="relative">
-            {school.school_image_url ? (
-              <img src={school.school_image_url} alt={school.school_name} className="w-full h-28 object-cover opacity-40" />
-            ) : (
-              <div className="w-full h-28 bg-gray-100 dark:bg-gray-900" />
+          <div className="relative h-32 bg-gradient-to-br from-[#1A1A6D] to-[#87CEFA] dark:from-[#20B2AA] dark:to-[#4682B4]">
+            {school.image_filename && (
+              <SchoolProfileImage
+                schoolId={school.school_id}
+                imageFilename={school.image_filename}
+                alt={`${school.school_name} cover`}
+                className="w-full h-full object-cover opacity-40"
+                fallbackClassName="w-full h-full"
+              />
             )}
 
             <div className="absolute left-4 top-1/2 transform -translate-y-1/2 flex items-center gap-4">
-              {school.school_image_url ? (
-                <img src={school.school_image_url} alt={school.school_name} className="w-16 h-16 rounded-lg border-4 border-white dark:border-gray-800 shadow-lg object-cover" />
-              ) : (
-                <div className="w-16 h-16 rounded-lg border-4 border-white dark:border-gray-800 shadow-lg bg-white dark:bg-gray-800 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-gray-400 dark:text-gray-600" />
-                </div>
-              )}
+              <SchoolProfileImage
+                schoolId={school.school_id}
+                imageFilename={school.image_filename}
+                alt={school.school_name}
+                className="w-20 h-20 rounded-full border-4 border-white dark:border-gray-800 shadow-lg object-cover"
+                fallbackClassName="w-20 h-20 rounded-full border-4 border-white dark:border-gray-800 shadow-lg bg-white dark:bg-gray-800 flex items-center justify-center"
+              />
 
               <div className="min-w-0">
-                <h1 className="text-lg md:text-2xl font-bold leading-tight md:truncate md:max-w-[28rem] text-gray-900 dark:text-gray-100">
+                <h1 className="text-lg md:text-2xl font-bold leading-tight md:truncate md:max-w-[28rem] text-white">
                   {school.school_name}
                 </h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p className="text-sm text-white/90 mt-1">
                   {school.statistics.total_records} record{school.statistics.total_records !== 1 ? 's' : ''} • {school.statistics.pending_count} pending
                 </p>
               </div>
@@ -365,7 +370,7 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
               <button
                 onClick={() => loadOnboardingData(false)}
                 disabled={refreshing}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg hover:bg-white/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Refresh data"
               >
                 <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />

@@ -15,7 +15,7 @@ export interface SchoolOnboardingRecord {
 export interface School {
   id: string;
   name: string;
-  picture_url?: string;
+  image_filename?: string;
   created_at: string;
 }
 
@@ -78,7 +78,7 @@ export const schoolOnboardingApi = {
       school: {
         id: data.school_id || data.schoolId || '',
         name: schoolName,
-        picture_url: schoolPicture ? URL.createObjectURL(schoolPicture) : undefined,
+        image_filename: schoolPicture ? URL.createObjectURL(schoolPicture) : undefined,
         created_at: new Date().toISOString(),
       },
       records: [],

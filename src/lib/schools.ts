@@ -1,4 +1,4 @@
-import { School, SchoolOnboardingRecord, ClassSummary } from './schoolOnboarding';
+import { SchoolOnboardingRecord, ClassSummary } from './schoolOnboarding';
 import apiClient from './api';
 
 export interface RecordAction {
@@ -16,7 +16,7 @@ export interface RecordDetails extends SchoolOnboardingRecord {
   actions: RecordAction[];
 }
 
-// API Response types
+// API Response types for onboarding
 export interface ClassInfo {
   class_name: string;
   count: number;
@@ -41,15 +41,143 @@ export interface SchoolWithStats {
   last_activity?: string;
 }
 
+// API Response types for main schools view
+export interface SchoolStudentsOverview {
+  presence_status: {
+    checked_in: number;
+    checked_out: number;
+    absent: number;
+  };
+  status: {
+    active: number;
+    left: number;
+    graduated: number;
+  };
+  body_check: {
+    checked: number;
+    markers: number;
+  };
+}
+
+export interface School {
+  id: string;
+  name: string;
+  image_filename: string | null;
+  students_overview: SchoolStudentsOverview;
+}
+
+export interface Student {
+  id: string;
+  dependant_id: string;
+  full_name: string;
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  image_filename: string | null;
+  presence_status: 'checked_in' | 'checked_out' | 'absent' | 'unknown';
+  presence_changed_at: string | null;
+  last_checkin_at: string | null;
+  last_checkout_at: string | null;
+}
+
+export interface Membership {
+  id: string;
+  user_id: string;
+  school_id: string;
+  role: 'ADMIN' | 'TEACHER' | 'STAFF';
+  status: 'active' | 'inactive';
+  started_at: string;
+  ended_at: string | null;
+  full_name: string;
+  image_filename: string | null;
+}
+
+export interface ClassroomStudentsOverview {
+  presence_status: {
+    checked_in: number;
+    checked_out: number;
+    absent: number;
+  };
+  status: {
+    enrolled: number;
+    withdrawn: number;
+    transferred: number;
+  };
+  body_check: {
+    checked: number;
+    markers: number;
+  };
+}
+
+export interface Classroom {
+  id: string;
+  name: string;
+  primary_teacher_id: string | null;
+  is_active: boolean;
+  image_filename: string | null;
+  students_overview: ClassroomStudentsOverview;
+}
+
 // API for schools
 export const schoolsApi = {
+  // Get all schools (main view with students overview)
+  getAllSchools: async (): Promise<School[]> => {
+    const response = await apiClient.get<School[]>('/schools/');
+    return response.data;
+  },
+
+  // Get a specific school (main view)
+  getSchool: async (schoolId: string): Promise<School | null> => {
+    try {
+      const response = await apiClient.get<School>(`/schools/${schoolId}`);
+      return response.data;
+    } catch (error) {
+      // Return null if school not found
+      return null;
+    }
+  },
+
+  // Get students for a specific school
+  getStudents: async (schoolId: string): Promise<Student[]> => {
+    try {
+      const response = await apiClient.get<Student[]>(`/schools/${schoolId}/students`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      return [];
+    }
+  },
+
+  // Get memberships for a specific school
+  getMemberships: async (schoolId: string): Promise<Membership[]> => {
+    try {
+      const response = await apiClient.get<Membership[]>(`/schools/${schoolId}/memberships`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching memberships:', error);
+      return [];
+    }
+  },
+
+  // Get classrooms for a specific school
+  getClassrooms: async (schoolId: string): Promise<Classroom[]> => {
+    try {
+      const response = await apiClient.get<Classroom[]>(`/schools/${schoolId}/classrooms`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching classrooms:', error);
+      return [];
+    }
+  },
+};
+
+// API for school onboarding
+export const onboardingApi = {
   // Get all schools with onboarding statistics
   getAllSchools: async (): Promise<SchoolWithStats[]> => {
     const response = await apiClient.get<SchoolWithStats[]>('/admin/onboarding/schools');
     return response.data;
   },
 
-  // Get a specific school
+  // Get a specific school with onboarding stats
   getSchool: async (schoolId: string): Promise<SchoolWithStats | null> => {
     try {
       const response = await apiClient.get<SchoolWithStats>(`/admin/onboarding/schools/${schoolId}`);

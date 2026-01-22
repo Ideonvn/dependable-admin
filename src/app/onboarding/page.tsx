@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, GraduationCap, Building2, ClipboardList } from 'lucide-react';
-import { schoolsApi, School } from '@/lib/schools';
-import SchoolCardMain from '@/components/SchoolCardMain';
+import { RefreshCw, GraduationCap, Building2, ArrowLeft } from 'lucide-react';
+import { onboardingApi, SchoolWithStats } from '@/lib/schools';
+import SchoolCard from '@/components/SchoolCard';
 
-export default function DashboardClient() {
+export default function OnboardingPage() {
   const router = useRouter();
-  const [schools, setSchools] = useState<School[]>([]);
+  const [schools, setSchools] = useState<SchoolWithStats[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,7 +18,7 @@ export default function DashboardClient() {
   const loadSchools = async () => {
     setLoading(true);
     try {
-      const data = await schoolsApi.getAllSchools();
+      const data = await onboardingApi.getAllSchools();
       setSchools(data);
     } catch (error) {
       console.error('Error loading schools:', error);
@@ -28,13 +28,22 @@ export default function DashboardClient() {
   };
 
   return (
-    <main className="w-full px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-[#0F1115]">
+    <main className="w-full px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-[#0F1115] min-h-screen">
+      {/* Back Button */}
+      <button
+        onClick={() => router.push('/')}
+        className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-6 transition-colors"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        Back to Schools
+      </button>
+
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
           <Building2 className="w-8 h-8 text-[#1A1A6D] dark:text-[#20B2AA]" />
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Schools</h2>
-            <p className="text-gray-600 dark:text-gray-400 text-sm">Manage schools, students, and staff</p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">School Onboarding</h2>
+            <p className="text-gray-600 dark:text-gray-400 text-sm">Manage school onboarding and student data import</p>
           </div>
         </div>
         
@@ -49,11 +58,11 @@ export default function DashboardClient() {
           </button>
           
           <button
-            onClick={() => router.push('/onboarding')}
-            className="flex items-center gap-2 px-6 py-3 bg-gray-700 dark:bg-gray-600 text-white rounded-lg hover:opacity-90 transition-all shadow-lg hover:shadow-xl font-medium"
+            onClick={() => router.push('/onboarding/create')}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#1A1A6D] to-[#87CEFA] dark:from-[#20B2AA] dark:to-[#4682B4] text-white rounded-lg hover:opacity-90 transition-all shadow-lg hover:shadow-xl font-medium"
           >
-            <ClipboardList className="w-5 h-5" />
-            Onboarding
+            <GraduationCap className="w-5 h-5" />
+            New School Onboarding
           </button>
         </div>
       </div>
@@ -68,13 +77,20 @@ export default function DashboardClient() {
           <Building2 className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No schools yet</h3>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Schools will appear here once they are onboarded
+            Get started by creating your first school onboarding
           </p>
+          <button
+            onClick={() => router.push('/onboarding/create')}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-colors font-medium"
+          >
+            <GraduationCap className="w-5 h-5" />
+            Create First School
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
           {schools.map((school) => (
-            <SchoolCardMain key={school.id} school={school} />
+            <SchoolCard key={school.school_id} school={school} />
           ))}
         </div>
       )}
