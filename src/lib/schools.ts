@@ -36,7 +36,7 @@ export interface SchoolStatistics {
 export interface SchoolWithStats {
   school_id: string;
   school_name: string;
-  school_image_url: string | null;
+  image_filename: string | null;
   statistics: SchoolStatistics;
   last_activity?: string;
 }

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { Users, CheckCircle, Clock, Upload, Calendar } from 'lucide-react';
 import { SchoolWithStats } from '@/lib/schools';
+import SchoolProfileImage from './SchoolProfileImage';
 
 interface SchoolCardProps {
   school: SchoolWithStats;
@@ -24,19 +25,23 @@ export default function SchoolCard({ school }: SchoolCardProps) {
     >
       {/* School Header */}
       <div className="relative h-32 bg-gradient-to-br from-[#1A1A6D] to-[#87CEFA] dark:from-[#20B2AA] dark:to-[#4682B4]">
-        {school.school_image_url && (
-          <img
-            src={school.school_image_url}
-            alt={school.school_name}
+        {school.image_filename && (
+          <SchoolProfileImage
+            schoolId={school.school_id}
+            imageFilename={school.image_filename}
+            alt={`${school.school_name} cover`}
             className="w-full h-full object-cover opacity-40"
+            fallbackClassName="w-full h-full"
           />
         )}
         <div className="absolute inset-0 flex items-center justify-center">
-          {school.school_image_url ? (
-            <img
-              src={school.school_image_url}
+          {school.image_filename ? (
+            <SchoolProfileImage
+              schoolId={school.school_id}
+              imageFilename={school.image_filename}
               alt={school.school_name}
               className="w-16 h-16 rounded-full border-4 border-white dark:border-gray-800 shadow-lg object-cover"
+              fallbackClassName="w-16 h-16 rounded-full border-4 border-white dark:border-gray-800 shadow-lg bg-white dark:bg-gray-800 flex items-center justify-center"
             />
           ) : (
             <div className="w-16 h-16 rounded-full border-4 border-white dark:border-gray-800 shadow-lg bg-white dark:bg-gray-800 flex items-center justify-center">
