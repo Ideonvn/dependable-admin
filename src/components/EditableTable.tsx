@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Edit2, Trash2, Check, X, ChevronDown, ChevronRight, AlertCircle, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { SchoolOnboardingRecord } from '@/lib/schoolOnboarding';
-import { schoolsApi, RecordDetails, RecordAction } from '@/lib/schools';
+import { onboardingApi, RecordDetails, RecordAction } from '@/lib/schools';
 
 interface EditableTableProps {
   records: SchoolOnboardingRecord[];
@@ -127,7 +127,7 @@ export default function EditableTable({ records, onUpdate, onDelete, initialEdit
   const fetchRecordActions = async (recordId: string) => {
     setLoadingActions(prev => new Set(prev).add(recordId));
     try {
-      const details = await schoolsApi.getRecordDetails(schoolId, recordId);
+      const details = await onboardingApi.getRecordDetails(schoolId, recordId);
       if (details) {
         setRecordDetails(prev => new Map(prev).set(recordId, details));
       }
