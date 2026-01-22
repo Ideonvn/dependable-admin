@@ -28,8 +28,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="w-full px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-[#0F1115] min-h-screen">
-      {/* Back Button */}
+    <main className="w-full flex-1 px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-[#0F1115]">
       <button
         onClick={() => router.push('/')}
         className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-6 transition-colors"

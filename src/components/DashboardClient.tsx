@@ -28,7 +28,7 @@ export default function DashboardClient() {
   };
 
   return (
-    <main className="w-full px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-[#0F1115]">
+    <main className="w-full flex-1 px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-[#0F1115]">
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
           <Building2 className="w-8 h-8 text-[#1A1A6D] dark:text-[#20B2AA]" />

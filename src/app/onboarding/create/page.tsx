@@ -68,7 +68,7 @@ export default function SchoolOnboardingCreate() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0F1115] py-12">
+    <div className="flex-1 bg-gray-50 dark:bg-[#0F1115] py-12">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white dark:bg-[#121212] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 p-8">
           <div className="flex items-center gap-3 mb-6">

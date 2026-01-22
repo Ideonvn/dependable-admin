@@ -116,6 +116,25 @@ export interface Classroom {
   students_overview: ClassroomStudentsOverview;
 }
 
+export interface EnrolledStudent {
+  student_id: string;
+  full_name: string;
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  started_at: string;
+  ended_at: string | null;
+}
+
+export interface ClassroomEnrollment {
+  id: string;
+  name: string;
+  students: EnrolledStudent[];
+}
+
+export interface EnrollmentsResponse {
+  classrooms: ClassroomEnrollment[];
+  unassigned_students: EnrolledStudent[];
+}
+
 // API for schools
 export const schoolsApi = {
   // Get all schools (main view with students overview)
@@ -165,6 +184,17 @@ export const schoolsApi = {
     } catch (error) {
       console.error('Error fetching classrooms:', error);
       return [];
+    }
+  },
+
+  // Get classroom enrollments for a specific school
+  getEnrollments: async (schoolId: string): Promise<EnrollmentsResponse> => {
+    try {
+      const response = await apiClient.get<EnrollmentsResponse>(`/schools/${schoolId}/classrooms/enrollments`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching enrollments:', error);
+      return { classrooms: [], unassigned_students: [] };
     }
   },
 };

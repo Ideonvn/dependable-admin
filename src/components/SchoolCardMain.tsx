@@ -43,44 +43,44 @@ export default function SchoolCardMain({ school }: SchoolCardMainProps) {
       <div className="space-y-3">
         {/* Presence Status */}
         <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1.5">
-            <span className="text-2xl font-bold text-white">{students_overview.presence_status.checked_in}</span>
+          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-2 py-1.5">
+            <span className="text-xl font-bold text-white">{students_overview.presence_status.checked_in}</span>
             <span className="text-sm text-white/90">In</span>
           </div>
-          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1.5">
-            <span className="text-2xl font-bold text-white">{students_overview.presence_status.checked_out}</span>
+          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-2 py-1.5">
+            <span className="text-xl font-bold text-white">{students_overview.presence_status.checked_out}</span>
             <span className="text-sm text-white/90">Out</span>
           </div>
-          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1.5">
-            <span className="text-2xl font-bold text-white">{students_overview.presence_status.absent}</span>
+          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-2 py-1.5">
+            <span className="text-xl font-bold text-white">{students_overview.presence_status.absent}</span>
             <span className="text-sm text-white/90">Absent</span>
           </div>
         </div>
 
         {/* Body Check */}
         <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1.5">
-            <span className="text-2xl font-bold text-white">{students_overview.body_check.checked}</span>
+          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-2 py-1.5">
+            <span className="text-xl font-bold text-white">{students_overview.body_check.checked}</span>
             <span className="text-sm text-white/90">Checked</span>
           </div>
-          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1.5">
-            <span className="text-2xl font-bold text-white">{students_overview.body_check.markers}</span>
+          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-2 py-1.5">
+            <span className="text-xl font-bold text-white">{students_overview.body_check.markers}</span>
             <span className="text-sm text-white/90">Markers</span>
           </div>
         </div>
 
         {/* Student Status */}
         <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1.5">
-            <span className="text-2xl font-bold text-white">{students_overview.status.active}</span>
+          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-2 py-1.5">
+            <span className="text-xl font-bold text-white">{students_overview.status.active}</span>
             <span className="text-sm text-white/90">Active</span>
           </div>
-          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1.5">
-            <span className="text-2xl font-bold text-white">{students_overview.status.left}</span>
+          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-2 py-1.5">
+            <span className="text-xl font-bold text-white">{students_overview.status.left}</span>
             <span className="text-sm text-white/90">Left</span>
           </div>
-          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1.5">
-            <span className="text-2xl font-bold text-white">{students_overview.status.graduated}</span>
+          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-2 py-1.5">
+            <span className="text-xl font-bold text-white">{students_overview.status.graduated}</span>
             <span className="text-sm text-white/90">Graduated</span>
           </div>
         </div>

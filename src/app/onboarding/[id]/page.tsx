@@ -298,7 +298,7 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#0F1115] flex items-center justify-center">
+      <div className="flex-1 bg-gray-50 dark:bg-[#0F1115] flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-[#1A1A6D] dark:border-[#20B2AA] border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -306,7 +306,7 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
 
   if (!onboarding || !school) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#0F1115] flex items-center justify-center">
+      <div className="flex-1 bg-gray-50 dark:bg-[#0F1115] flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">School Not Found</h2>
           <button
@@ -321,7 +321,7 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0F1115] py-8">
+    <div className="flex-1 bg-gray-50 dark:bg-[#0F1115] py-8">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6">

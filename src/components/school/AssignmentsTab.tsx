@@ -2,16 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { ClipboardCheck, Search, Save, User, Calendar, AlertCircle } from 'lucide-react';
-import { schoolsApi } from '@/lib/schools';
+import { schoolsApi, EnrolledStudent } from '@/lib/schools';
 
 interface AssignmentsTabProps {
   schoolId: string;
 }
 
 interface StudentAssignment {
-  id: string;
   student_id: string;
   full_name: string;
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
   classroom_id: string | null;
   started_at: string | null;
   ended_at: string | null;
@@ -40,51 +40,46 @@ export default function AssignmentsTab({ schoolId }: AssignmentsTabProps) {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Fetch classrooms
-      const classroomsData = await schoolsApi.getClassrooms(schoolId);
-      setClassrooms(classroomsData.map(c => ({
+      // Fetch enrollments
+      const enrollmentsData = await schoolsApi.getEnrollments(schoolId);
+      
+      // Build classrooms list
+      const classroomsList: Classroom[] = enrollmentsData.classrooms.map(c => ({
         id: c.id,
         name: c.name,
-        student_count: c.students_overview.status.enrolled
-      })));
+        student_count: c.students.length
+      }));
+      setClassrooms(classroomsList);
 
-      // Fetch students
-      const studentsData = await schoolsApi.getStudents(schoolId);
+      // Build assignments list - students in classrooms
+      const assignmentsList: StudentAssignment[] = [];
       
-      // Mock: Create more realistic distribution of students
-      // Let's create a distribution: 30%, 25%, 20%, 15%, 10% (and some unassigned)
-      const mockAssignments: StudentAssignment[] = studentsData.map((student, index) => {
-        let classroomId: string | null = null;
-        
-        if (classroomsData.length > 0) {
-          const totalStudents = studentsData.length;
-          const percentile = index / totalStudents;
-          
-          if (percentile < 0.30 && classroomsData[0]) {
-            classroomId = classroomsData[0].id; // 30% in first class
-          } else if (percentile < 0.55 && classroomsData[1]) {
-            classroomId = classroomsData[1].id; // 25% in second class
-          } else if (percentile < 0.75 && classroomsData[2]) {
-            classroomId = classroomsData[2].id; // 20% in third class
-          } else if (percentile < 0.88 && classroomsData[3]) {
-            classroomId = classroomsData[3].id; // 13% in fourth class
-          } else if (percentile < 0.95 && classroomsData[4]) {
-            classroomId = classroomsData[4].id; // 7% in fifth class
-          }
-          // Remaining 5% stay unassigned
-        }
-
-        return {
-          id: `assignment-${student.id}`,
-          student_id: student.id,
+      enrollmentsData.classrooms.forEach(classroom => {
+        classroom.students.forEach(student => {
+          assignmentsList.push({
+            student_id: student.student_id,
+            full_name: student.full_name,
+            gender: student.gender,
+            classroom_id: classroom.id,
+            started_at: student.started_at,
+            ended_at: student.ended_at
+          });
+        });
+      });
+      
+      // Add unassigned students
+      enrollmentsData.unassigned_students.forEach(student => {
+        assignmentsList.push({
+          student_id: student.student_id,
           full_name: student.full_name,
-          classroom_id: classroomId,
-          started_at: classroomId ? '2024-01-15T00:00:00Z' : null,
-          ended_at: null
-        };
+          gender: student.gender,
+          classroom_id: null,
+          started_at: student.started_at,
+          ended_at: student.ended_at
+        });
       });
 
-      setAssignments(mockAssignments);
+      setAssignments(assignmentsList);
     } catch (error) {
       console.error('Error loading assignments:', error);
     } finally {

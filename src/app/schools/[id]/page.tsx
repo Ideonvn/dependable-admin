@@ -47,7 +47,7 @@ export default function SchoolDetailPage() {
 
   if (loading) {
     return (
-      <main className="w-full px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-[#0F1115] min-h-screen">
+      <main className="w-full flex-1 px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-[#0F1115]">
         <div className="flex items-center justify-center py-20">
           <div className="w-12 h-12 border-4 border-[#1A1A6D] dark:border-[#20B2AA] border-t-transparent rounded-full animate-spin" />
         </div>
@@ -57,7 +57,7 @@ export default function SchoolDetailPage() {
 
   if (!school) {
     return (
-      <main className="w-full px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-[#0F1115] min-h-screen">
+      <main className="w-full flex-1 px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-[#0F1115]">
         <div className="bg-white dark:bg-[#121212] rounded-lg shadow border border-gray-200 dark:border-gray-800 p-12 text-center">
           <Building2 className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">School not found</h3>
@@ -77,7 +77,7 @@ export default function SchoolDetailPage() {
   }
 
   return (
-    <main className="w-full px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-[#0F1115] min-h-screen">
+    <main className="w-full flex-1 px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 dark:bg-[#0F1115]">
       {/* Header */}
       <div className="mb-8">
         <button

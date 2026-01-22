@@ -43,7 +43,7 @@ export default async function RootLayout({
               disableTransitionOnChange
               themes={['light', 'dark']}
             >
-              <div className="min-h-screen">
+              <div className="min-h-screen flex flex-col">
                 {session?.user && <AppHeader user={session.user} />}
                 {children}
               </div>
