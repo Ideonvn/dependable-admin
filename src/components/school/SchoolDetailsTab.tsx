@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { School } from '@/lib/schools';
+import { School, schoolsApi } from '@/lib/schools';
 import { Building2, Camera, Save } from 'lucide-react';
 import SchoolProfileImage from '@/components/SchoolProfileImage';
 
@@ -18,13 +18,12 @@ export default function SchoolDetailsTab({ school, onUpdate }: SchoolDetailsTabP
   const handleSave = async () => {
     setSaving(true);
     try {
-      // TODO: Implement API call to update school details
-      console.log('Saving school details:', { name });
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      await schoolsApi.updateSchool(school.id, { name });
       setIsEditing(false);
       onUpdate();
     } catch (error) {
       console.error('Error saving school details:', error);
+      alert('Failed to update school name. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -35,12 +34,11 @@ export default function SchoolDetailsTab({ school, onUpdate }: SchoolDetailsTabP
     if (!file) return;
 
     try {
-      // TODO: Implement image upload API
-      console.log('Uploading image:', file.name);
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      await schoolsApi.uploadSchoolImage(school.id, file);
       onUpdate();
     } catch (error) {
       console.error('Error uploading image:', error);
+      alert('Failed to upload image. Please try again.');
     }
   };
 

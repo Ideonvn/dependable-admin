@@ -33,6 +33,16 @@ export default function EnrollmentsTab({ schoolId }: EnrollmentsTabProps) {
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [saving, setSaving] = useState(false);
+  const [toasts, setToasts] = useState<{ id: string; title?: string; message: string; variant?: 'success' | 'error' | 'info' }[]>([]);
+
+  const addToast = (toast: { title?: string; message: string; variant?: 'success' | 'error' | 'info' }) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setToasts((t) => [...t, { id, ...toast }]);
+    // auto-dismiss after 4 seconds
+    setTimeout(() => {
+      setToasts((t) => t.filter((x) => x.id !== id));
+    }, 4000);
+  };
 
   useEffect(() => {
     loadData();
@@ -181,24 +191,57 @@ export default function EnrollmentsTab({ schoolId }: EnrollmentsTabProps) {
         classroom_id: classroomId
       }));
       
-      await schoolsApi.updateEnrollments(schoolId, {
-        starts_on: new Date().toISOString(),
+      // Format date as YYYY-MM-DD
+      const today = new Date();
+      const starts_on = today.toISOString().split('T')[0];
+      
+      const response = await schoolsApi.updateEnrollments(schoolId, {
+        starts_on,
         ends_on: null,
         enrollments: updates
       });
       
+      // Refresh data from response to ensure we're in sync with server
+      const enrollmentsList: StudentEnrollment[] = [];
+      
+      response.classrooms.forEach(classroom => {
+        classroom.students.forEach(student => {
+          enrollmentsList.push({
+            student_id: student.student_id,
+            full_name: student.full_name,
+            gender: student.gender,
+            classroom_id: classroom.id,
+            started_at: student.started_at,
+            ended_at: student.ended_at
+          });
+        });
+      });
+      
+      response.unassigned_students.forEach(student => {
+        enrollmentsList.push({
+          student_id: student.student_id,
+          full_name: student.full_name,
+          gender: student.gender,
+          classroom_id: null,
+          started_at: student.started_at,
+          ended_at: student.ended_at
+        });
+      });
+      
+      setEnrollments(enrollmentsList);
+      
       // Update original classrooms to reflect saved state
-      const newOriginalClassrooms = new Map(originalClassrooms);
-      changes.forEach((classroomId, studentId) => {
-        newOriginalClassrooms.set(studentId, classroomId);
+      const newOriginalClassrooms = new Map<string, string | null>();
+      enrollmentsList.forEach(enrollment => {
+        newOriginalClassrooms.set(enrollment.student_id, enrollment.classroom_id);
       });
       setOriginalClassrooms(newOriginalClassrooms);
       setChanges(new Map());
       
-      alert('Enrollments saved successfully!');
+      addToast({ title: 'Success', message: 'Enrollments saved successfully!', variant: 'success' });
     } catch (error) {
       console.error('Error saving enrollments:', error);
-      alert('Failed to save enrollments');
+      addToast({ title: 'Error', message: 'Failed to save enrollments. Please try again.', variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -288,37 +331,7 @@ export default function EnrollmentsTab({ schoolId }: EnrollmentsTabProps) {
       </div>
 
       {/* Classrooms Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 mb-6">
-        {/* Unassigned Students */}
-        <div
-          onDragOver={handleDragOver}
-          onDrop={(e) => handleDrop(e, null)}
-          className="bg-gray-50 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 p-4 min-h-[500px] max-h-[700px] flex flex-col"
-        >
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-300 dark:border-gray-700">
-            <h4 className="font-semibold text-gray-700 dark:text-gray-300">Unassigned</h4>
-            <span className="text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-800 px-2 py-0.5 rounded">{unassignedStudents.length}</span>
-          </div>
-          <div className="space-y-2 overflow-y-auto flex-1 pr-2">
-            {unassignedStudents.length === 0 ? (
-              <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
-                <User className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>No unassigned students</p>
-              </div>
-            ) : (
-              unassignedStudents.map((enrollment) => (
-                <StudentCard
-                  key={enrollment.student_id}
-                  enrollment={enrollment}
-                  isSelected={selectedStudents.has(enrollment.student_id)}
-                  isDragging={draggedStudents.has(enrollment.student_id)}
-                  onDragStart={handleDragStart}
-                  onSelect={toggleStudentSelection}
-                />
-              ))
-            )}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 mb-6">
 
         {/* Classroom Columns */}
         {classrooms.map((classroom) => {
@@ -347,6 +360,7 @@ export default function EnrollmentsTab({ schoolId }: EnrollmentsTabProps) {
                       enrollment={enrollment}
                       isSelected={selectedStudents.has(enrollment.student_id)}
                       isDragging={draggedStudents.has(enrollment.student_id)}
+                      isChanged={changes.has(enrollment.student_id)}
                       onDragStart={handleDragStart}
                       onSelect={toggleStudentSelection}
                     />
@@ -356,6 +370,62 @@ export default function EnrollmentsTab({ schoolId }: EnrollmentsTabProps) {
             </div>
           );
         })}
+
+        {/* Unassigned Students */}
+        <div
+          onDragOver={handleDragOver}
+          onDrop={(e) => handleDrop(e, null)}
+          className="bg-gray-50 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 p-4 min-h-[500px] max-h-[700px] flex flex-col"
+        >
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-300 dark:border-gray-700">
+            <h4 className="font-semibold text-gray-700 dark:text-gray-300">Unassigned</h4>
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-800 px-2 py-0.5 rounded">{unassignedStudents.length}</span>
+          </div>
+          <div className="space-y-2 overflow-y-auto flex-1 pr-2">
+            {unassignedStudents.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
+                <User className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>No unassigned students</p>
+              </div>
+            ) : (
+              unassignedStudents.map((enrollment) => (
+                <StudentCard
+                  key={enrollment.student_id}
+                  enrollment={enrollment}
+                  isSelected={selectedStudents.has(enrollment.student_id)}
+                  isDragging={draggedStudents.has(enrollment.student_id)}
+                  isChanged={changes.has(enrollment.student_id)}
+                  onDragStart={handleDragStart}
+                  onSelect={toggleStudentSelection}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Toast container */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`max-w-sm w-full px-4 py-3 rounded-lg shadow-lg border transition-opacity bg-white dark:bg-[#111217] border-gray-200 dark:border-gray-800 ${
+              t.variant === 'success' ? 'ring-2 ring-green-500 dark:ring-green-400' : 
+              t.variant === 'error' ? 'ring-2 ring-red-500 dark:ring-red-400' : 
+              'ring-1 ring-gray-200 dark:ring-gray-700'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-1">
+                {t.title && <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.title}</div>}
+                <div className="text-sm text-gray-700 dark:text-gray-300">{t.message}</div>
+              </div>
+              <button onClick={() => setToasts((s) => s.filter(x => x.id !== t.id))} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                ✕
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -365,11 +435,12 @@ interface StudentCardProps {
   enrollment: StudentEnrollment;
   isSelected: boolean;
   isDragging: boolean;
+  isChanged: boolean;
   onDragStart: (e: React.DragEvent, studentId: string) => void;
   onSelect: (studentId: string) => void;
 }
 
-function StudentCard({ enrollment, isSelected, isDragging, onDragStart, onSelect }: StudentCardProps) {
+function StudentCard({ enrollment, isSelected, isDragging, isChanged, onDragStart, onSelect }: StudentCardProps) {
   return (
     <div
       draggable
@@ -379,10 +450,13 @@ function StudentCard({ enrollment, isSelected, isDragging, onDragStart, onSelect
         onSelect(enrollment.student_id);
       }}
       className={`
-        p-3 rounded-lg border cursor-move transition-all
+        p-3 rounded-lg cursor-move transition-all
+        ${isChanged ? 'border-l-4' : 'border'}
         ${isSelected 
           ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-600 ring-2 ring-blue-200 dark:ring-blue-700' 
-          : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+          : isChanged
+            ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-400 dark:border-amber-500 hover:border-amber-500 dark:hover:border-amber-400'
+            : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
         }
         ${isDragging ? 'opacity-50' : 'opacity-100'}
       `}
@@ -390,7 +464,7 @@ function StudentCard({ enrollment, isSelected, isDragging, onDragStart, onSelect
       <div className="flex items-start gap-2">
         <User className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
+          <div className={`text-sm text-gray-900 dark:text-gray-100 truncate ${isChanged ? 'font-bold' : 'font-medium'}`}>
             {enrollment.full_name}
           </div>
           {enrollment.started_at && (

@@ -206,10 +206,34 @@ export const schoolsApi = {
       ends_on: string | null;
       enrollments: { student_id: string; classroom_id: string | null }[];
     }
-  ): Promise<void> => {
-    // await apiClient.put(`/schools/${schoolId}/classrooms/enrollments`, { enrollments: updates });
-    console.log('Mock updateEnrollments called with:', schoolId, updates);
-    return;
+  ): Promise<EnrollmentsResponse> => {
+    const response = await apiClient.patch<EnrollmentsResponse>(
+      `/schools/${schoolId}/classrooms/enrollments`,
+      updates
+    );
+    return response.data;
+  },
+
+  // Update school details
+  updateSchool: async (schoolId: string, data: { name: string }): Promise<School> => {
+    const response = await apiClient.put<School>(`/schools/${schoolId}`, data);
+    return response.data;
+  },
+
+  // Upload school profile image
+  uploadSchoolImage: async (schoolId: string, file: File): Promise<{ message: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<{ message: string }>(
+      `/schools/${schoolId}/profile/image`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
   },
 };
 
