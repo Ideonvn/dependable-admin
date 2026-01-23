@@ -197,6 +197,20 @@ export const schoolsApi = {
       return { classrooms: [], unassigned_students: [] };
     }
   },
+
+  // Update student enrollments
+  updateEnrollments: async (
+    schoolId: string, 
+    updates: {
+      starts_on: string;
+      ends_on: string | null;
+      enrollments: { student_id: string; classroom_id: string | null }[];
+    }
+  ): Promise<void> => {
+    // await apiClient.put(`/schools/${schoolId}/classrooms/enrollments`, { enrollments: updates });
+    console.log('Mock updateEnrollments called with:', schoolId, updates);
+    return;
+  },
 };
 
 // API for school onboarding

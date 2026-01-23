@@ -8,9 +8,9 @@ import SchoolDetailsTab from '@/components/school/SchoolDetailsTab';
 import StudentsTab from '@/components/school/StudentsTab';
 import MembershipTab from '@/components/school/MembershipTab';
 import ClassroomsTab from '@/components/school/ClassroomsTab';
-import AssignmentsTab from '@/components/school/AssignmentsTab';
+import EnrollmentsTab from '@/components/school/EnrollmentsTab';
 
-type TabType = 'details' | 'students' | 'membership' | 'classrooms' | 'assignments';
+type TabType = 'details' | 'students' | 'membership' | 'classrooms' | 'enrollments';
 
 export default function SchoolDetailPage() {
   const router = useRouter();
@@ -42,7 +42,7 @@ export default function SchoolDetailPage() {
     { id: 'students' as TabType, label: 'Students', icon: Users },
     { id: 'membership' as TabType, label: 'Membership', icon: UserCog },
     { id: 'classrooms' as TabType, label: 'Classrooms', icon: BookOpen },
-    { id: 'assignments' as TabType, label: 'Assignments', icon: ClipboardCheck },
+    { id: 'enrollments' as TabType, label: 'Enrollments', icon: ClipboardCheck },
   ];
 
   if (loading) {
@@ -126,7 +126,7 @@ export default function SchoolDetailPage() {
         {activeTab === 'students' && <StudentsTab schoolId={school.id} />}
         {activeTab === 'membership' && <MembershipTab schoolId={school.id} />}
         {activeTab === 'classrooms' && <ClassroomsTab schoolId={school.id} />}
-        {activeTab === 'assignments' && <AssignmentsTab schoolId={school.id} />}
+        {activeTab === 'enrollments' && <EnrollmentsTab schoolId={school.id} />}
       </div>
     </main>
   );

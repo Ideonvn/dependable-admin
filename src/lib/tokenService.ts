@@ -60,17 +60,28 @@ export const tokenService = {
   // Exchange Google token for backend token
   async exchangeGoogleToken(googleIdToken: string): Promise<TokenData> {
     const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const response = await axios.post(`${baseURL}/auth/admin/google?token=${googleIdToken}`);
     
-    const tokenData: TokenData = {
-      access_token: response.data.access_token,
-      expires_at: response.data.expires_at,
-      refresh_token: response.data.refresh_token,
-      user_id: response.data.user_id,
-    };
+    try {
+      const response = await axios.post(`${baseURL}/auth/admin/google?token=${googleIdToken}`);
+      
+      const tokenData: TokenData = {
+        access_token: response.data.access_token,
+        expires_at: response.data.expires_at,
+        refresh_token: response.data.refresh_token,
+        user_id: response.data.user_id,
+      };
 
-    this.setTokenData(tokenData);
-    return tokenData;
+      this.setTokenData(tokenData);
+      return tokenData;
+    } catch (error: any) {
+      // Check for 403 error indicating expired/invalid Google token
+      if (error.response?.status === 403) {
+        console.error('Google token expired or invalid, clearing token data');
+        this.clearTokenData();
+        throw new Error('GOOGLE_TOKEN_EXPIRED');
+      }
+      throw error;
+    }
   },
 
   // Get valid token (refresh if needed)

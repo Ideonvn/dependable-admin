@@ -34,6 +34,35 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Add response interceptor to handle authentication errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    // Check for 403 error indicating expired/invalid credentials
+    if (error.response?.status === 401) {
+      const errorData = error.response?.data?.error;
+      
+      // Check if it's an authentication-related 401
+      if (errorData?.developer_message?.toLowerCase().includes('credential') ||
+          errorData?.developer_message?.toLowerCase().includes('token')) {
+        console.error('Authentication failed (401), triggering logout');
+        
+        // Clear local token data
+        tokenService.clearTokenData();
+        setGoogleIdToken(null);
+        
+        // Trigger logout by redirecting to sign-in
+        if (typeof window !== 'undefined') {
+          // Use NextAuth signOut to properly clear session
+          window.location.href = '/api/auth/signout?callbackUrl=/auth/signin';
+        }
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
 // Types
 export interface ImportBatch {
   id: string;

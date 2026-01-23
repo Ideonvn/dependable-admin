@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react';
 import { ClipboardCheck, Search, Save, User, Calendar, AlertCircle } from 'lucide-react';
 import { schoolsApi, EnrolledStudent } from '@/lib/schools';
 
-interface AssignmentsTabProps {
+interface EnrollmentsTabProps {
   schoolId: string;
 }
 
-interface StudentAssignment {
+interface StudentEnrollment {
   student_id: string;
   full_name: string;
   gender: 'MALE' | 'FEMALE' | 'OTHER';
@@ -23,10 +23,11 @@ interface Classroom {
   student_count: number;
 }
 
-export default function AssignmentsTab({ schoolId }: AssignmentsTabProps) {
+export default function EnrollmentsTab({ schoolId }: EnrollmentsTabProps) {
   const [loading, setLoading] = useState(true);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
-  const [assignments, setAssignments] = useState<StudentAssignment[]>([]);
+  const [enrollments, setEnrollments] = useState<StudentEnrollment[]>([]);
+  const [originalClassrooms, setOriginalClassrooms] = useState<Map<string, string | null>>(new Map());
   const [changes, setChanges] = useState<Map<string, string | null>>(new Map());
   const [draggedStudents, setDraggedStudents] = useState<Set<string>>(new Set());
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
@@ -51,12 +52,12 @@ export default function AssignmentsTab({ schoolId }: AssignmentsTabProps) {
       }));
       setClassrooms(classroomsList);
 
-      // Build assignments list - students in classrooms
-      const assignmentsList: StudentAssignment[] = [];
+      // Build enrollments list - students in classrooms
+      const enrollmentsList: StudentEnrollment[] = [];
       
       enrollmentsData.classrooms.forEach(classroom => {
         classroom.students.forEach(student => {
-          assignmentsList.push({
+          enrollmentsList.push({
             student_id: student.student_id,
             full_name: student.full_name,
             gender: student.gender,
@@ -69,7 +70,7 @@ export default function AssignmentsTab({ schoolId }: AssignmentsTabProps) {
       
       // Add unassigned students
       enrollmentsData.unassigned_students.forEach(student => {
-        assignmentsList.push({
+        enrollmentsList.push({
           student_id: student.student_id,
           full_name: student.full_name,
           gender: student.gender,
@@ -79,9 +80,17 @@ export default function AssignmentsTab({ schoolId }: AssignmentsTabProps) {
         });
       });
 
-      setAssignments(assignmentsList);
+      setEnrollments(enrollmentsList);
+      
+      // Store original classroom assignments
+      const originalMap = new Map<string, string | null>();
+      enrollmentsList.forEach(enrollment => {
+        originalMap.set(enrollment.student_id, enrollment.classroom_id);
+      });
+      setOriginalClassrooms(originalMap);
+      setChanges(new Map()); // Clear any existing changes
     } catch (error) {
-      console.error('Error loading assignments:', error);
+      console.error('Error loading enrollments:', error);
     } finally {
       setLoading(false);
     }
@@ -109,22 +118,33 @@ export default function AssignmentsTab({ schoolId }: AssignmentsTabProps) {
     const studentIdsJson = e.dataTransfer.getData('studentIds');
     const studentIds: string[] = JSON.parse(studentIdsJson);
 
-    // Update assignments
-    const newAssignments = assignments.map(assignment => {
-      if (studentIds.includes(assignment.student_id)) {
-        const newChanges = new Map(changes);
-        newChanges.set(assignment.student_id, targetClassroomId);
-        setChanges(newChanges);
-        
+    // Update enrollments
+    const newEnrollments = enrollments.map(enrollment => {
+      if (studentIds.includes(enrollment.student_id)) {
         return {
-          ...assignment,
+          ...enrollment,
           classroom_id: targetClassroomId
         };
       }
-      return assignment;
+      return enrollment;
     });
 
-    setAssignments(newAssignments);
+    // Update changes map - compare against original classroom
+    const newChanges = new Map(changes);
+    studentIds.forEach(studentId => {
+      const originalClassroom = originalClassrooms.get(studentId);
+      
+      // If student is back to original classroom, remove from changes
+      if (originalClassroom === targetClassroomId) {
+        newChanges.delete(studentId);
+      } else {
+        // Otherwise, track the change
+        newChanges.set(studentId, targetClassroomId);
+      }
+    });
+
+    setEnrollments(newEnrollments);
+    setChanges(newChanges);
     setDraggedStudents(new Set());
     setSelectedStudents(new Set());
   };
@@ -139,24 +159,53 @@ export default function AssignmentsTab({ schoolId }: AssignmentsTabProps) {
     setSelectedStudents(newSelection);
   };
 
+  const handleUndo = () => {
+    // Reset enrollments back to original state
+    const resetEnrollments = enrollments.map(enrollment => ({
+      ...enrollment,
+      classroom_id: originalClassrooms.get(enrollment.student_id) ?? null
+    }));
+    setEnrollments(resetEnrollments);
+    setChanges(new Map());
+    setSelectedStudents(new Set());
+  };
+
   const handleSave = async () => {
+    if (changes.size === 0) return;
+    
     setSaving(true);
     try {
-      // TODO: Implement API call to save assignments
-      console.log('Saving assignments:', Object.fromEntries(changes));
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Build the payload: array of {student_id, classroom_id}
+      const updates = Array.from(changes.entries()).map(([studentId, classroomId]) => ({
+        student_id: studentId,
+        classroom_id: classroomId
+      }));
+      
+      await schoolsApi.updateEnrollments(schoolId, {
+        starts_on: new Date().toISOString(),
+        ends_on: null,
+        enrollments: updates
+      });
+      
+      // Update original classrooms to reflect saved state
+      const newOriginalClassrooms = new Map(originalClassrooms);
+      changes.forEach((classroomId, studentId) => {
+        newOriginalClassrooms.set(studentId, classroomId);
+      });
+      setOriginalClassrooms(newOriginalClassrooms);
       setChanges(new Map());
-      alert('Assignments saved successfully!');
+      
+      alert('Enrollments saved successfully!');
     } catch (error) {
-      console.error('Error saving assignments:', error);
-      alert('Failed to save assignments');
+      console.error('Error saving enrollments:', error);
+      alert('Failed to save enrollments');
     } finally {
       setSaving(false);
     }
   };
 
   const getStudentsForClassroom = (classroomId: string | null) => {
-    return assignments.filter(a => {
+    return enrollments.filter(a => {
       const matchesClassroom = a.classroom_id === classroomId;
       const matchesSearch = searchQuery === '' || 
         a.full_name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -183,28 +232,37 @@ export default function AssignmentsTab({ schoolId }: AssignmentsTabProps) {
         <div className="flex items-center gap-3">
           <ClipboardCheck className="w-6 h-6 text-[#1A1A6D] dark:text-[#20B2AA]" />
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Classroom Assignments</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Drag students between classrooms to manage assignments</p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Classroom Enrollments</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Drag students between classrooms to manage enrollments</p>
           </div>
         </div>
         {changes.size > 0 && (
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {saving ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                Save Changes ({changes.size})
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleUndo}
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+            >
+              Undo Changes
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {saving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Save Changes ({changes.size})
+                </>
+              )}
+            </button>
+          </div>
         )}
       </div>
 
@@ -248,12 +306,12 @@ export default function AssignmentsTab({ schoolId }: AssignmentsTabProps) {
                 <p>No unassigned students</p>
               </div>
             ) : (
-              unassignedStudents.map((assignment) => (
+              unassignedStudents.map((enrollment) => (
                 <StudentCard
-                  key={assignment.student_id}
-                  assignment={assignment}
-                  isSelected={selectedStudents.has(assignment.student_id)}
-                  isDragging={draggedStudents.has(assignment.student_id)}
+                  key={enrollment.student_id}
+                  enrollment={enrollment}
+                  isSelected={selectedStudents.has(enrollment.student_id)}
+                  isDragging={draggedStudents.has(enrollment.student_id)}
                   onDragStart={handleDragStart}
                   onSelect={toggleStudentSelection}
                 />
@@ -283,12 +341,12 @@ export default function AssignmentsTab({ schoolId }: AssignmentsTabProps) {
                     <p>No students assigned</p>
                   </div>
                 ) : (
-                  studentsInClassroom.map((assignment) => (
+                  studentsInClassroom.map((enrollment) => (
                     <StudentCard
-                      key={assignment.student_id}
-                      assignment={assignment}
-                      isSelected={selectedStudents.has(assignment.student_id)}
-                      isDragging={draggedStudents.has(assignment.student_id)}
+                      key={enrollment.student_id}
+                      enrollment={enrollment}
+                      isSelected={selectedStudents.has(enrollment.student_id)}
+                      isDragging={draggedStudents.has(enrollment.student_id)}
                       onDragStart={handleDragStart}
                       onSelect={toggleStudentSelection}
                     />
@@ -304,21 +362,21 @@ export default function AssignmentsTab({ schoolId }: AssignmentsTabProps) {
 }
 
 interface StudentCardProps {
-  assignment: StudentAssignment;
+  enrollment: StudentEnrollment;
   isSelected: boolean;
   isDragging: boolean;
   onDragStart: (e: React.DragEvent, studentId: string) => void;
   onSelect: (studentId: string) => void;
 }
 
-function StudentCard({ assignment, isSelected, isDragging, onDragStart, onSelect }: StudentCardProps) {
+function StudentCard({ enrollment, isSelected, isDragging, onDragStart, onSelect }: StudentCardProps) {
   return (
     <div
       draggable
-      onDragStart={(e) => onDragStart(e, assignment.student_id)}
+      onDragStart={(e) => onDragStart(e, enrollment.student_id)}
       onClick={(e) => {
         e.stopPropagation();
-        onSelect(assignment.student_id);
+        onSelect(enrollment.student_id);
       }}
       className={`
         p-3 rounded-lg border cursor-move transition-all
@@ -333,14 +391,14 @@ function StudentCard({ assignment, isSelected, isDragging, onDragStart, onSelect
         <User className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <div className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
-            {assignment.full_name}
+            {enrollment.full_name}
           </div>
-          {assignment.started_at && (
+          {enrollment.started_at && (
             <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
               <Calendar className="w-3 h-3" />
               <span>
-                {new Date(assignment.started_at).toLocaleDateString()}
-                {assignment.ended_at && ` - ${new Date(assignment.ended_at).toLocaleDateString()}`}
+                {new Date(enrollment.started_at).toLocaleDateString()}
+                {enrollment.ended_at && ` - ${new Date(enrollment.ended_at).toLocaleDateString()}`}
               </span>
             </div>
           )}
