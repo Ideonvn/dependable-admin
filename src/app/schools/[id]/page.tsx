@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Building2, Users, BookOpen, UserCog, ClipboardCheck } from 'lucide-react';
+import { ArrowLeft, Building2, Users, BookOpen, UserCog, ClipboardCheck, Receipt } from 'lucide-react';
 import { schoolsApi, School } from '@/lib/schools';
 import SchoolDetailsTab from '@/components/school/SchoolDetailsTab';
 import StudentsTab from '@/components/school/StudentsTab';
 import MembershipTab from '@/components/school/MembershipTab';
 import ClassroomsTab from '@/components/school/ClassroomsTab';
 import EnrollmentsTab from '@/components/school/EnrollmentsTab';
+import BillingTab from '@/components/school/BillingTab';
 
-type TabType = 'details' | 'students' | 'membership' | 'classrooms' | 'enrollments';
+type TabType = 'details' | 'students' | 'membership' | 'classrooms' | 'enrollments' | 'billing';
 
 export default function SchoolDetailPage() {
   const router = useRouter();
@@ -43,6 +44,7 @@ export default function SchoolDetailPage() {
     { id: 'membership' as TabType, label: 'Membership', icon: UserCog },
     { id: 'classrooms' as TabType, label: 'Classrooms', icon: BookOpen },
     { id: 'enrollments' as TabType, label: 'Enrollments', icon: ClipboardCheck },
+    { id: 'billing' as TabType, label: 'Billing', icon: Receipt },
   ];
 
   if (loading) {
@@ -127,6 +129,7 @@ export default function SchoolDetailPage() {
         {activeTab === 'membership' && <MembershipTab schoolId={school.id} />}
         {activeTab === 'classrooms' && <ClassroomsTab schoolId={school.id} />}
         {activeTab === 'enrollments' && <EnrollmentsTab schoolId={school.id} />}
+        {activeTab === 'billing' && <BillingTab schoolId={school.id} />}
       </div>
     </main>
   );
