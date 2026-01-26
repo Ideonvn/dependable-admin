@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Users, Search, Plus, User } from 'lucide-react';
 import { schoolsApi, Student } from '@/lib/schools';
 import EnrollStudentModal from '@/components/EnrollStudentModal';
@@ -11,6 +12,7 @@ interface StudentsTabProps {
 }
 
 export default function StudentsTab({ schoolId }: StudentsTabProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -118,7 +120,9 @@ export default function StudentsTab({ schoolId }: StudentsTabProps) {
               {filteredStudents.map((student) => (
                 <tr
                   key={student.id}
-                  className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                  onClick={() => router.push(`/schools/${schoolId}/students/${student.id}`)}
+                  className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                  title="View & manage student"
                 >
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">

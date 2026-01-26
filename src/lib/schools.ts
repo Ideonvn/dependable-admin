@@ -78,6 +78,50 @@ export interface Student {
   last_checkout_at: string | null;
 }
 
+// Extended student details for edit/manage screen
+export interface StudentDetails {
+  id: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  date_of_birth: string; // YYYY-MM-DD
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  image_filename: string | null;
+}
+
+export interface StudentContact {
+  id: string;
+  student_id: string;
+  person_id: string;
+  email: string | null;
+  full_name: string;
+  first_name: string;
+  last_name: string;
+  id_country: string | null;
+  id_type: string | null;
+  id_full: string | null;
+  id_masked: string | null;
+  role: string; // e.g., GUARDIAN
+  primary: boolean;
+  can_check_in_out: boolean;
+  can_view_records: boolean;
+  can_receive_notifications: boolean;
+  valid_from: string | null;
+  valid_to: string | null;
+  notes: string | null;
+  image_filename: string | null;
+}
+
+export interface StudentEnrollment {
+  id: string;
+  student_id: string;
+  classroom_id: string;
+  school_year_id: string;
+  starts_on: string; // YYYY-MM-DD
+  ends_on: string | null; // YYYY-MM-DD
+  status: 'enrolled' | 'withdrawn' | 'transferred' | string;
+}
+
 export interface Membership {
   id: string;
   user_id: string;
@@ -114,6 +158,16 @@ export interface Classroom {
   is_active: boolean;
   image_filename: string | null;
   students_overview: ClassroomStudentsOverview;
+}
+
+// Classroom teacher assignment response shape
+export interface ClassroomTeacherAssignment {
+  classroom_id: string;
+  user_id: string;
+  started_at: string;
+  ended_at: string | null;
+  full_name: string;
+  image_filename: string | null;
 }
 
 export interface EnrolledStudent {
@@ -159,6 +213,98 @@ export const schoolsApi = {
     return response.data;
   },
 
+  // ===== Students - Manage (Mocked for now) =====
+  getStudentDetails: async (schoolId: string, studentId: string): Promise<StudentDetails> => {
+    // Mocked response
+    await new Promise((r) => setTimeout(r, 200));
+    return {
+      id: studentId,
+      first_name: 'Jane',
+      last_name: 'Doe',
+      full_name: 'Jane Doe',
+      date_of_birth: '2021-03-14',
+      gender: 'FEMALE',
+      image_filename: null,
+    };
+  },
+
+  updateStudentDetails: async (
+    schoolId: string,
+    studentId: string,
+    data: Partial<Pick<StudentDetails, 'first_name' | 'last_name' | 'date_of_birth' | 'gender'>>
+  ): Promise<{ message: string }> => {
+    // Mock update
+    await new Promise((r) => setTimeout(r, 300));
+    return { message: 'Student updated' };
+  },
+
+  uploadStudentImage: async (
+    schoolId: string,
+    studentId: string,
+    file: File
+  ): Promise<{ message: string }> => {
+    // Mock upload
+    await new Promise((r) => setTimeout(r, 400));
+    return { message: 'Image uploaded' };
+  },
+
+  getStudentContacts: async (schoolId: string, studentId: string): Promise<StudentContact[]> => {
+    // Mock contacts (based on provided sample)
+    await new Promise((r) => setTimeout(r, 200));
+    return [
+      {
+        id: '6a8abf5f-2b0e-4ed0-849f-dc07670ac639',
+        student_id: studentId,
+        person_id: 'b59881cc-aa45-4a24-81f8-acb75e2ab10a',
+        email: 'ideon.vn+mctest@gmail.com',
+        full_name: 'Ideon Mc Test',
+        first_name: 'Ideon',
+        last_name: 'Mc Test',
+        id_country: null,
+        id_type: null,
+        id_full: null,
+        id_masked: null,
+        role: 'GUARDIAN',
+        primary: true,
+        can_check_in_out: true,
+        can_view_records: true,
+        can_receive_notifications: true,
+        valid_from: null,
+        valid_to: null,
+        notes: 'Imported via onboarding script',
+        image_filename: null,
+      },
+    ];
+  },
+
+  getStudentEnrollments: async (
+    schoolId: string,
+    studentId: string
+  ): Promise<StudentEnrollment[]> => {
+    // Mock enrollments (based on provided sample)
+    await new Promise((r) => setTimeout(r, 200));
+    return [
+      {
+        id: '3f700aac-c538-4ad5-9bd3-7f51cfe07576',
+        student_id: studentId,
+        classroom_id: 'fe21a6d8-c789-463b-84b7-95b898f76b98',
+        school_year_id: '6ed2581a-db72-42e9-a8d0-0fbb69227d4b',
+        starts_on: '2026-01-21',
+        ends_on: '2026-01-22',
+        status: 'enrolled',
+      },
+      {
+        id: '861a90bf-387a-412d-a41e-58195d79d348',
+        student_id: studentId,
+        classroom_id: 'fe21a6d8-c789-463b-84b7-95b898f76b98',
+        school_year_id: '6ed2581a-db72-42e9-a8d0-0fbb69227d4b',
+        starts_on: '2026-01-23',
+        ends_on: null,
+        status: 'enrolled',
+      },
+    ];
+  },
+
   // Get a specific school (main view)
   getSchool: async (schoolId: string): Promise<School | null> => {
     try {
@@ -188,6 +334,23 @@ export const schoolsApi = {
       return response.data;
     } catch (error) {
       console.error('Error fetching memberships:', error);
+      return [];
+    }
+  },
+
+  // Get memberships for a specific school filtered by role
+  getMembershipsByRole: async (
+    schoolId: string,
+    role: 'ADMIN' | 'TEACHER' | 'STAFF'
+  ): Promise<Membership[]> => {
+    try {
+      const response = await apiClient.get<Membership[]>(
+        `/schools/${schoolId}/memberships`,
+        { params: { role } }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching memberships by role:', error);
       return [];
     }
   },
@@ -377,9 +540,9 @@ export const schoolsApi = {
   },
 
   // Get teachers assigned to a classroom
-  getClassroomTeachers: async (schoolId: string, classroomId: string): Promise<Membership[]> => {
+  getClassroomTeachers: async (schoolId: string, classroomId: string): Promise<ClassroomTeacherAssignment[]> => {
     try {
-      const response = await apiClient.get<Membership[]>(
+      const response = await apiClient.get<ClassroomTeacherAssignment[]>(
         `/schools/${schoolId}/classrooms/${classroomId}/teachers`
       );
       return response.data;

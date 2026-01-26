@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, AlertCircle, Upload, Trash2, Plus } from 'lucide-react';
-import { schoolsApi, Classroom, Membership } from '@/lib/schools';
+import { schoolsApi, Classroom, Membership, ClassroomTeacherAssignment } from '@/lib/schools';
 
 interface EditClassroomModalProps {
   isOpen: boolean;
@@ -26,9 +26,9 @@ export default function EditClassroomModal({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  const [teachers, setTeachers] = useState<Membership[]>([]);
+  const [teachers, setTeachers] = useState<ClassroomTeacherAssignment[]>([]);
   const [allTeachers, setAllTeachers] = useState<Membership[]>([]);
-  const [classroomTeachers, setClassroomTeachers] = useState<Membership[]>([]);
+  const [classroomTeachers, setClassroomTeachers] = useState<ClassroomTeacherAssignment[]>([]);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
 
   const [loading, setLoading] = useState(true);
@@ -45,10 +45,10 @@ export default function EditClassroomModal({
     setLoading(true);
     setError(null);
     try {
-      // Load all teachers in the school
-      const memberships = await schoolsApi.getMemberships(schoolId);
-      const teachersOnly = memberships.filter(m => m.role === 'TEACHER' && m.status === 'active');
-      setAllTeachers(teachersOnly);
+      // Load all teachers in the school (server-side filter by role)
+      const memberships = await schoolsApi.getMembershipsByRole(schoolId, 'TEACHER');
+      const activeOnly = memberships.filter(m => m.status === 'active');
+      setAllTeachers(activeOnly);
 
       // Load teachers assigned to this classroom
       const assignedTeachers = await schoolsApi.getClassroomTeachers(schoolId, classroom.id);
@@ -324,7 +324,8 @@ export default function EditClassroomModal({
                       <thead>
                         <tr className="border-b border-gray-200 dark:border-gray-700">
                           <th className="text-left py-2 px-3 font-semibold text-gray-700 dark:text-gray-300">Name</th>
-                          <th className="text-left py-2 px-3 font-semibold text-gray-700 dark:text-gray-300">Role</th>
+                          <th className="text-left py-2 px-3 font-semibold text-gray-700 dark:text-gray-300">Started At</th>
+                          <th className="text-left py-2 px-3 font-semibold text-gray-700 dark:text-gray-300">Ended At</th>
                           <th className="text-left py-2 px-3 font-semibold text-gray-700 dark:text-gray-300">Action</th>
                         </tr>
                       </thead>
@@ -332,7 +333,8 @@ export default function EditClassroomModal({
                         {classroomTeachers.map((teacher) => (
                           <tr key={teacher.user_id} className="border-b border-gray-100 dark:border-gray-800">
                             <td className="py-2 px-3 text-gray-900 dark:text-gray-100">{teacher.full_name}</td>
-                            <td className="py-2 px-3 text-gray-600 dark:text-gray-400">{teacher.role}</td>
+                            <td className="py-2 px-3 text-gray-600 dark:text-gray-400">{new Date(teacher.started_at).toLocaleString()}</td>
+                            <td className="py-2 px-3 text-gray-600 dark:text-gray-400">{teacher.ended_at ? new Date(teacher.ended_at).toLocaleString() : '—'}</td>
                             <td className="py-2 px-3">
                               <button
                                 type="button"
