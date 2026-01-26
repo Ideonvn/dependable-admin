@@ -5,6 +5,7 @@ import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
 interface AlertDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  onConfirm?: () => void | Promise<void>;
   title: string;
   message: string;
   variant?: 'success' | 'error' | 'info';
@@ -14,6 +15,7 @@ interface AlertDialogProps {
 export default function AlertDialog({
   isOpen,
   onClose,
+  onConfirm,
   title,
   message,
   variant = 'info',
@@ -72,7 +74,7 @@ export default function AlertDialog({
 
         <div className="bg-gray-50 dark:bg-[#0F1115] px-6 py-4 flex justify-end rounded-b-lg">
           <button
-            onClick={onClose}
+            onClick={onConfirm || onClose}
             className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${style.button}`}
           >
             {buttonText}
