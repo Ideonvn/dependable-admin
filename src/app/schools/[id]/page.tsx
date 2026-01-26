@@ -2,16 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Building2, Users, BookOpen, UserCog, ClipboardCheck, Receipt } from 'lucide-react';
-import { schoolsApi, School } from '@/lib/schools';
+import { ArrowLeft, Building2, Users, BookOpen, UserCog, ClipboardCheck, Receipt, Calendar, Download, RefreshCw, Loader2 } from 'lucide-react';
+import { schoolsApi, School, SchoolReportResponse } from '@/lib/schools';
 import SchoolDetailsTab from '@/components/school/SchoolDetailsTab';
 import StudentsTab from '@/components/school/StudentsTab';
 import MembershipTab from '@/components/school/MembershipTab';
 import ClassroomsTab from '@/components/school/ClassroomsTab';
 import EnrollmentsTab from '@/components/school/EnrollmentsTab';
 import BillingTab from '@/components/school/BillingTab';
+import SchoolYearsTab from '@/components/school/SchoolYearsTab';
 
-type TabType = 'details' | 'students' | 'membership' | 'classrooms' | 'enrollments' | 'billing';
+type TabType = 'details' | 'students' | 'membership' | 'classrooms' | 'enrollments' | 'schoolYears' | 'billing';
 
 export default function SchoolDetailPage() {
   const router = useRouter();
@@ -21,9 +22,13 @@ export default function SchoolDetailPage() {
   const [school, setSchool] = useState<School | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('details');
+  const [reportStatus, setReportStatus] = useState<SchoolReportResponse | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportChecking, setReportChecking] = useState(false);
 
   useEffect(() => {
     loadSchool();
+    fetchReportStatus();
   }, [schoolId]);
 
   const loadSchool = async () => {
@@ -38,12 +43,46 @@ export default function SchoolDetailPage() {
     }
   };
 
+  const fetchReportStatus = async () => {
+    setReportChecking(true);
+    try {
+      const status = await schoolsApi.getSchoolReportStatus(schoolId);
+      setReportStatus(status);
+    } catch (error) {
+      console.error('Error fetching report status:', error);
+    } finally {
+      setReportChecking(false);
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    setReportLoading(true);
+    try {
+      const status = await schoolsApi.requestSchoolReport(schoolId);
+      setReportStatus(status);
+    } catch (error) {
+      console.error('Error requesting report:', error);
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const handleDownloadReport = () => {
+    if (reportStatus?.download_url) {
+      window.open(reportStatus.download_url, '_blank');
+    }
+  };
+
+  const isReportReady = reportStatus?.ready && !!reportStatus.download_url;
+  const isReportGenerating = reportStatus?.status === 'PENDING' || reportStatus?.status === 'RUNNING';
+
   const tabs = [
     { id: 'details' as TabType, label: 'Details', icon: Building2 },
     { id: 'students' as TabType, label: 'Students', icon: Users },
     { id: 'membership' as TabType, label: 'Membership', icon: UserCog },
     { id: 'classrooms' as TabType, label: 'Classrooms', icon: BookOpen },
     { id: 'enrollments' as TabType, label: 'Enrollments', icon: ClipboardCheck },
+    { id: 'schoolYears' as TabType, label: 'School Years', icon: Calendar },
     { id: 'billing' as TabType, label: 'Billing', icon: Receipt },
   ];
 
@@ -90,13 +129,69 @@ export default function SchoolDetailPage() {
           Back to Schools
         </button>
         
-        <div className="flex items-center gap-3">
-          <Building2 className="w-8 h-8 text-[#1A1A6D] dark:text-[#20B2AA]" />
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{school.name}</h1>
-            <p className="text-gray-600 dark:text-gray-400 text-sm">Manage school details and operations</p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Building2 className="w-8 h-8 text-[#1A1A6D] dark:text-[#20B2AA]" />
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{school.name}</h1>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Manage school details and operations</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isReportReady ? (
+              <button
+                onClick={handleDownloadReport}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <Download className="w-4 h-4" />
+                Download Report
+              </button>
+            ) : isReportGenerating ? (
+              <button
+                disabled
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg opacity-80"
+              >
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Generating...
+              </button>
+            ) : (
+              <button
+                onClick={handleGenerateReport}
+                disabled={reportLoading}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+              >
+                {reportLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Starting...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    Generate Report
+                  </>
+                )}
+              </button>
+            )}
+
+            <button
+              onClick={fetchReportStatus}
+              disabled={reportChecking}
+              className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-60"
+              title="Refresh report status"
+            >
+              <RefreshCw className={`w-4 h-4 ${reportChecking ? 'animate-spin' : ''}`} />
+              {reportChecking ? 'Checking...' : 'Refresh'}
+            </button>
           </div>
         </div>
+
+        {reportStatus?.message && (
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            {reportStatus.message}
+          </p>
+        )}
       </div>
 
       {/* Tabs */}
@@ -129,6 +224,7 @@ export default function SchoolDetailPage() {
         {activeTab === 'membership' && <MembershipTab schoolId={school.id} />}
         {activeTab === 'classrooms' && <ClassroomsTab schoolId={school.id} />}
         {activeTab === 'enrollments' && <EnrollmentsTab schoolId={school.id} />}
+        {activeTab === 'schoolYears' && <SchoolYearsTab schoolId={school.id} />}
         {activeTab === 'billing' && <BillingTab schoolId={school.id} />}
       </div>
     </main>

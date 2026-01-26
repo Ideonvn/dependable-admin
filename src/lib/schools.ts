@@ -135,6 +135,22 @@ export interface EnrollmentsResponse {
   unassigned_students: EnrolledStudent[];
 }
 
+export interface SchoolYear {
+  id: string;
+  name: string;
+  starts_on: string;
+  ends_on: string;
+}
+
+export type SchoolReportStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | '';
+
+export interface SchoolReportResponse {
+  status: SchoolReportStatus;
+  message: string;
+  download_url: string | null;
+  ready: boolean;
+}
+
 // API for schools
 export const schoolsApi = {
   // Get all schools (main view with students overview)
@@ -176,6 +192,37 @@ export const schoolsApi = {
     }
   },
 
+  // Add a new member to a school
+  addMember: async (
+    schoolId: string,
+    data: {
+      email: string;
+      role: 'ADMIN' | 'TEACHER' | 'STAFF';
+    }
+  ): Promise<Membership> => {
+    const response = await apiClient.post<Membership>(
+      `/schools/${schoolId}/memberships`,
+      data
+    );
+    return response.data;
+  },
+
+  // Update a member in a school
+  updateMember: async (
+    schoolId: string,
+    data: {
+      user_id: string;
+      role: 'ADMIN' | 'TEACHER' | 'STAFF';
+      status: 'active' | 'inactive' | 'invited';
+    }
+  ): Promise<Membership> => {
+    const response = await apiClient.put<Membership>(
+      `/schools/${schoolId}/memberships/`,
+      data
+    );
+    return response.data;
+  },
+
   // Get classrooms for a specific school
   getClassrooms: async (schoolId: string): Promise<Classroom[]> => {
     try {
@@ -196,6 +243,43 @@ export const schoolsApi = {
       console.error('Error fetching enrollments:', error);
       return { classrooms: [], unassigned_students: [] };
     }
+  },
+
+  // Enroll a new student in a classroom
+  enrollStudent: async (
+    schoolId: string,
+    classroomId: string,
+    data: {
+      first_name: string;
+      last_name: string;
+      gender: 'MALE' | 'FEMALE' | 'OTHER';
+      date_of_birth: string;
+      weight_at_birth?: number | null;
+      length_at_birth?: number | null;
+      student: {
+        external_ref: string;
+        admitted_on: string;
+      };
+      student_contact: {
+        email: string;
+        first_name: string;
+        last_name: string;
+        role: string;
+        primary: boolean;
+        can_check_in_out: boolean;
+        can_view_records: boolean;
+        can_receive_notifications: boolean;
+        id_country?: string | null;
+        id_type?: string | null;
+        id_full?: string | null;
+      };
+    }
+  ): Promise<Student> => {
+    const response = await apiClient.post<Student>(
+      `/schools/${schoolId}/classrooms/${classroomId}/enrollments`,
+      data
+    );
+    return response.data;
   },
 
   // Update student enrollments
@@ -232,6 +316,165 @@ export const schoolsApi = {
           'Content-Type': 'multipart/form-data',
         },
       }
+    );
+    return response.data;
+  },
+
+  // Create a new classroom
+  createClassroom: async (
+    schoolId: string,
+    data: {
+      name: string;
+      primary_teacher_id?: string | null;
+    }
+  ): Promise<Classroom> => {
+    const response = await apiClient.post<Classroom>(
+      `/schools/${schoolId}/classrooms`,
+      data
+    );
+    return response.data;
+  },
+
+  // Get a specific classroom with details
+  getClassroom: async (schoolId: string, classroomId: string): Promise<Classroom> => {
+    const response = await apiClient.get<Classroom>(
+      `/schools/${schoolId}/classrooms/${classroomId}`
+    );
+    return response.data;
+  },
+
+  // Update classroom details
+  updateClassroom: async (
+    schoolId: string,
+    classroomId: string,
+    data: {
+      name?: string;
+      primary_teacher_id?: string | null;
+      is_active?: boolean;
+    }
+  ): Promise<Classroom> => {
+    const response = await apiClient.put<Classroom>(
+      `/schools/${schoolId}/classrooms/${classroomId}`,
+      data
+    );
+    return response.data;
+  },
+
+  // Upload classroom profile image
+  uploadClassroomImage: async (schoolId: string, classroomId: string, file: File): Promise<{ message: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<{ message: string }>(
+      `/schools/${schoolId}/classrooms/${classroomId}/profile/image`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
+  },
+
+  // Get teachers assigned to a classroom
+  getClassroomTeachers: async (schoolId: string, classroomId: string): Promise<Membership[]> => {
+    try {
+      const response = await apiClient.get<Membership[]>(
+        `/schools/${schoolId}/classrooms/${classroomId}/teachers`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching classroom teachers:', error);
+      return [];
+    }
+  },
+
+  // Assign a teacher to a classroom
+  assignTeacherToClassroom: async (
+    schoolId: string,
+    classroomId: string,
+    userId: string,
+    startedAt?: string | null
+  ): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ message: string }>(
+      `/schools/${schoolId}/classrooms/${classroomId}/teachers`,
+      {
+        user_id: userId,
+        started_at: startedAt || null,
+      }
+    );
+    return response.data;
+  },
+
+  // Unassign a teacher from a classroom
+  unassignTeacherFromClassroom: async (
+    schoolId: string,
+    classroomId: string,
+    userId: string
+  ): Promise<{ message: string }> => {
+    const response = await apiClient.delete<{ message: string }>(
+      `/schools/${schoolId}/classrooms/${classroomId}/teachers/${userId}`
+    );
+    return response.data;
+  },
+
+  // Get school years for a specific school
+  getSchoolYears: async (schoolId: string): Promise<SchoolYear[]> => {
+    try {
+      const response = await apiClient.get<SchoolYear[]>(`/schools/${schoolId}/years`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching school years:', error);
+      return [];
+    }
+  },
+
+  // Create a new school year
+  createSchoolYear: async (
+    schoolId: string,
+    data: {
+      name: string;
+      starts_on: string;
+      ends_on: string;
+    }
+  ): Promise<SchoolYear> => {
+    const response = await apiClient.post<SchoolYear>(
+      `/schools/${schoolId}/years`,
+      data
+    );
+    return response.data;
+  },
+
+  // Update a school year
+  updateSchoolYear: async (
+    schoolId: string,
+    yearId: string,
+    data: {
+      name: string;
+      starts_on: string;
+      ends_on: string;
+    }
+  ): Promise<SchoolYear> => {
+    const response = await apiClient.put<SchoolYear>(
+      `/schools/${schoolId}/years/${yearId}`,
+      data
+    );
+    return response.data;
+  },
+
+  // Request a school report generation
+  requestSchoolReport: async (schoolId: string): Promise<SchoolReportResponse> => {
+    const response = await apiClient.post<SchoolReportResponse>(
+      `/schools/${schoolId}/report/download`,
+      {}
+    );
+    return response.data;
+  },
+
+  // Check school report generation status
+  getSchoolReportStatus: async (schoolId: string): Promise<SchoolReportResponse> => {
+    const response = await apiClient.get<SchoolReportResponse>(
+      `/schools/${schoolId}/report/download`
     );
     return response.data;
   },

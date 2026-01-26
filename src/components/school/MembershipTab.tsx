@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { UserCog, Search, Plus, User, Shield, GraduationCap } from 'lucide-react';
 import { schoolsApi, Membership } from '@/lib/schools';
+import MembershipProfileImage from '@/components/MembershipProfileImage';
+import AddMemberModal from '@/components/AddMemberModal';
+import EditMemberModal from '@/components/EditMemberModal';
 
 interface MembershipTabProps {
   schoolId: string;
@@ -12,6 +15,9 @@ export default function MembershipTab({ schoolId }: MembershipTabProps) {
   const [loading, setLoading] = useState(true);
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Membership | null>(null);
+  const [isEditMemberModalOpen, setIsEditMemberModalOpen] = useState(false);
 
   useEffect(() => {
     loadMembership();
@@ -70,7 +76,9 @@ export default function MembershipTab({ schoolId }: MembershipTabProps) {
           <UserCog className="w-6 h-6 text-[#1A1A6D] dark:text-[#20B2AA]" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Membership</h3>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity">
+        <button 
+          onClick={() => setIsAddMemberModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity">
           <Plus className="w-4 h-4" />
           Add Member
         </button>
@@ -117,20 +125,23 @@ export default function MembershipTab({ schoolId }: MembershipTabProps) {
                 return (
                   <tr
                     key={membership.id}
-                    className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                    className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                    onClick={() => {
+                      setSelectedMember(membership);
+                      setIsEditMemberModalOpen(true);
+                    }}
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1A1A6D] to-[#87CEFA] dark:from-[#20B2AA] dark:to-[#4682B4] flex items-center justify-center text-white font-semibold">
-                          {membership.image_filename ? (
-                            <img
-                              src={`${process.env.NEXT_PUBLIC_API_URL}/files/${membership.image_filename}`}
-                              alt={membership.full_name}
-                              className="w-full h-full rounded-full object-cover"
-                            />
-                          ) : (
-                            <User className="w-5 h-5" />
-                          )}
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1A1A6D] to-[#87CEFA] dark:from-[#20B2AA] dark:to-[#4682B4] flex items-center justify-center text-white font-semibold overflow-hidden">
+                          <MembershipProfileImage
+                            schoolId={schoolId}
+                            membershipId={membership.id}
+                            imageFilename={membership.image_filename}
+                            alt={membership.full_name}
+                            className="w-full h-full object-cover"
+                            fallbackClassName="w-full h-full rounded-full bg-gradient-to-br from-[#1A1A6D] to-[#87CEFA] dark:from-[#20B2AA] dark:to-[#4682B4] flex items-center justify-center"
+                          />
                         </div>
                         <div>
                           <div className="font-medium text-gray-900 dark:text-gray-100">
@@ -165,6 +176,32 @@ export default function MembershipTab({ schoolId }: MembershipTabProps) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Add Member Modal */}
+      <AddMemberModal
+        isOpen={isAddMemberModalOpen}
+        onClose={() => setIsAddMemberModalOpen(false)}
+        onSuccess={loadMembership}
+        schoolId={schoolId}
+      />
+
+      {/* Edit Member Modal */}
+      {selectedMember && (
+        <EditMemberModal
+          isOpen={isEditMemberModalOpen}
+          onClose={() => {
+            setIsEditMemberModalOpen(false);
+            setSelectedMember(null);
+          }}
+          onSuccess={() => {
+            loadMembership();
+            setIsEditMemberModalOpen(false);
+            setSelectedMember(null);
+          }}
+          schoolId={schoolId}
+          member={selectedMember}
+        />
       )}
     </div>
   );
