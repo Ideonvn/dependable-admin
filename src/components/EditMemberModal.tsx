@@ -30,7 +30,7 @@ export default function EditMemberModal({
     setSubmitting(true);
 
     try {
-      await schoolsApi.updateMember(schoolId, {
+      await schoolsApi.updateMember(schoolId, member.id, {
         user_id: member.user_id,
         role,
         status,

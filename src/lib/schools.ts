@@ -373,6 +373,7 @@ export const schoolsApi = {
   // Update a member in a school
   updateMember: async (
     schoolId: string,
+    memberId: string,
     data: {
       user_id: string;
       role: 'ADMIN' | 'TEACHER' | 'STAFF';
@@ -380,7 +381,7 @@ export const schoolsApi = {
     }
   ): Promise<Membership> => {
     const response = await apiClient.put<Membership>(
-      `/schools/${schoolId}/memberships/`,
+      `/schools/${schoolId}/memberships/${memberId}`,
       data
     );
     return response.data;
