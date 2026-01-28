@@ -53,6 +53,22 @@ export default function SchoolYearsTab({ schoolId }: SchoolYearsTabProps) {
     setYearToDelete(null);
   };
 
+  const calculateWeekdays = (startDate: Date, endDate: Date): number => {
+    let weekdayCount = 0;
+    const currentDate = new Date(startDate);
+
+    while (currentDate <= endDate) {
+      const dayOfWeek = currentDate.getDay();
+      // 0 = Sunday, 6 = Saturday
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        weekdayCount++;
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return weekdayCount;
+  };
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -102,6 +118,7 @@ export default function SchoolYearsTab({ schoolId }: SchoolYearsTabProps) {
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Starts</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Ends</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Duration</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Weekdays</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
               </tr>
             </thead>
@@ -110,6 +127,7 @@ export default function SchoolYearsTab({ schoolId }: SchoolYearsTabProps) {
                 const startDate = new Date(year.starts_on);
                 const endDate = new Date(year.ends_on);
                 const durationDays = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                const weekdays = calculateWeekdays(startDate, endDate);
 
                 return (
                   <tr
@@ -137,6 +155,9 @@ export default function SchoolYearsTab({ schoolId }: SchoolYearsTabProps) {
                     <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">
                       {durationDays} days
                     </td>
+                    <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">
+                      {weekdays} days
+                    </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         <button
@@ -150,13 +171,14 @@ export default function SchoolYearsTab({ schoolId }: SchoolYearsTabProps) {
                         >
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button
+                        {/* TODO: Create backend endpoint */}
+                        {/* <button
                           onClick={() => handleDeleteClick(year)}
                           className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
                           title="Delete year"
                         >
                           <Trash2 className="w-4 h-4" />
-                        </button>
+                        </button> */}
                       </div>
                     </td>
                   </tr>

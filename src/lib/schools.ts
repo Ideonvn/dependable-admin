@@ -81,10 +81,13 @@ export interface Student {
 // Extended student details for edit/manage screen
 export interface StudentDetails {
   id: string;
+  dependant_id: string;
   first_name: string;
   last_name: string;
   full_name: string;
   date_of_birth: string; // YYYY-MM-DD
+  weight_at_birth: number | null;
+  length_at_birth: number | null;
   gender: 'MALE' | 'FEMALE' | 'OTHER';
   image_filename: string | null;
 }
@@ -115,8 +118,19 @@ export interface StudentContact {
 export interface StudentEnrollment {
   id: string;
   student_id: string;
-  classroom_id: string;
-  school_year_id: string;
+  classroom: {
+    id: string;
+    name: string;
+    primary_teacher_id: string | null;
+    is_active: boolean;
+    image_filename: string | null;
+  };
+  school_year: {
+    id: string;
+    name: string;
+    starts_on: string;
+    ends_on: string;
+  };
   starts_on: string; // YYYY-MM-DD
   ends_on: string | null; // YYYY-MM-DD
   status: 'enrolled' | 'withdrawn' | 'transferred' | string;
@@ -213,96 +227,110 @@ export const schoolsApi = {
     return response.data;
   },
 
-  // ===== Students - Manage (Mocked for now) =====
+  // ===== Students - Manage =====
   getStudentDetails: async (schoolId: string, studentId: string): Promise<StudentDetails> => {
-    // Mocked response
-    await new Promise((r) => setTimeout(r, 200));
-    return {
-      id: studentId,
-      first_name: 'Jane',
-      last_name: 'Doe',
-      full_name: 'Jane Doe',
-      date_of_birth: '2021-03-14',
-      gender: 'FEMALE',
-      image_filename: null,
-    };
+    try {
+      const response = await apiClient.get<{
+        id: string;
+        dependant_id: string;
+        full_name: string;
+        gender: 'MALE' | 'FEMALE' | 'OTHER';
+        image_filename: string | null;
+        dependant: {
+          id: string;
+          first_name: string;
+          last_name: string;
+          gender: 'MALE' | 'FEMALE' | 'OTHER';
+          date_of_birth: string;
+          weight_at_birth: number;
+          length_at_birth: number;
+          image_filename: string | null;
+        };
+      }>(`/schools/${schoolId}/students/${studentId}`);
+      
+      const data = response.data;
+      return {
+        id: data.id,
+        dependant_id: data.dependant_id,
+        first_name: data.dependant.first_name,
+        last_name: data.dependant.last_name,
+        full_name: data.full_name,
+        date_of_birth: data.dependant.date_of_birth,
+        weight_at_birth: data.dependant.weight_at_birth,
+        length_at_birth: data.dependant.length_at_birth,
+        gender: data.dependant.gender,
+        image_filename: data.dependant.image_filename,
+      };
+    } catch (error) {
+      console.error('Error fetching student details:', error);
+      throw error;
+    }
   },
 
-  updateStudentDetails: async (
-    schoolId: string,
-    studentId: string,
-    data: Partial<Pick<StudentDetails, 'first_name' | 'last_name' | 'date_of_birth' | 'gender'>>
+  updateDependant: async (
+    dependantId: string,
+    data: Partial<Pick<StudentDetails, 'first_name' | 'last_name' | 'date_of_birth' | 'weight_at_birth' | 'length_at_birth' | 'gender'>>
   ): Promise<{ message: string }> => {
-    // Mock update
-    await new Promise((r) => setTimeout(r, 300));
-    return { message: 'Student updated' };
+    try {
+      const response = await apiClient.put<{ message: string }>(
+        `/dependants/${dependantId}`,
+        data
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error updating dependant:', error);
+      throw error;
+    }
   },
 
   uploadStudentImage: async (
-    schoolId: string,
-    studentId: string,
+    dependantId: string,
     file: File
   ): Promise<{ message: string }> => {
-    // Mock upload
-    await new Promise((r) => setTimeout(r, 400));
-    return { message: 'Image uploaded' };
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await apiClient.post<{ message: string }>(
+        `/dependants/${dependantId}/profile/image`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error uploading student image:', error);
+      throw error;
+    }
   },
 
   getStudentContacts: async (schoolId: string, studentId: string): Promise<StudentContact[]> => {
-    // Mock contacts (based on provided sample)
-    await new Promise((r) => setTimeout(r, 200));
-    return [
-      {
-        id: '6a8abf5f-2b0e-4ed0-849f-dc07670ac639',
-        student_id: studentId,
-        person_id: 'b59881cc-aa45-4a24-81f8-acb75e2ab10a',
-        email: 'ideon.vn+mctest@gmail.com',
-        full_name: 'Ideon Mc Test',
-        first_name: 'Ideon',
-        last_name: 'Mc Test',
-        id_country: null,
-        id_type: null,
-        id_full: null,
-        id_masked: null,
-        role: 'GUARDIAN',
-        primary: true,
-        can_check_in_out: true,
-        can_view_records: true,
-        can_receive_notifications: true,
-        valid_from: null,
-        valid_to: null,
-        notes: 'Imported via onboarding script',
-        image_filename: null,
-      },
-    ];
+    try {
+      const response = await apiClient.get<StudentContact[]>(
+        `/schools/${schoolId}/students/${studentId}/contacts`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching student contacts:', error);
+      return [];
+    }
   },
 
   getStudentEnrollments: async (
     schoolId: string,
     studentId: string
   ): Promise<StudentEnrollment[]> => {
-    // Mock enrollments (based on provided sample)
-    await new Promise((r) => setTimeout(r, 200));
-    return [
-      {
-        id: '3f700aac-c538-4ad5-9bd3-7f51cfe07576',
-        student_id: studentId,
-        classroom_id: 'fe21a6d8-c789-463b-84b7-95b898f76b98',
-        school_year_id: '6ed2581a-db72-42e9-a8d0-0fbb69227d4b',
-        starts_on: '2026-01-21',
-        ends_on: '2026-01-22',
-        status: 'enrolled',
-      },
-      {
-        id: '861a90bf-387a-412d-a41e-58195d79d348',
-        student_id: studentId,
-        classroom_id: 'fe21a6d8-c789-463b-84b7-95b898f76b98',
-        school_year_id: '6ed2581a-db72-42e9-a8d0-0fbb69227d4b',
-        starts_on: '2026-01-23',
-        ends_on: null,
-        status: 'enrolled',
-      },
-    ];
+    try {
+      const response = await apiClient.get<StudentEnrollment[]>(
+        `/schools/${schoolId}/students/${studentId}/enrollments`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching student enrollments:', error);
+      return [];
+    }
   },
 
   // Get a specific school (main view)
