@@ -136,6 +136,42 @@ export interface StudentEnrollment {
   status: 'enrolled' | 'withdrawn' | 'transferred' | string;
 }
 
+export interface AttendanceEvent {
+  id: string;
+  event_type: 'check_in' | 'check_out';
+  occurred_at: string; // ISO datetime
+  performed_by: string;
+  handed_over_by: string;
+  notes: string | null;
+}
+
+export interface BodyCheckMarker {
+  id: string;
+  marker_name: string;
+  marker_type: string;
+  severity: string;
+}
+
+export interface AttendanceBodyCheck {
+  id: string;
+  checked_at: string; // ISO datetime
+  performed_by: string;
+  front: BodyCheckMarker[];
+  back: BodyCheckMarker[];
+}
+
+export interface AttendanceCalendarDay {
+  day: number;
+  attendances: AttendanceEvent[];
+  body_checks: AttendanceBodyCheck[];
+}
+
+export interface AttendanceCalendarMonth {
+  year: number;
+  month: number;
+  events: AttendanceCalendarDay[];
+}
+
 export interface Membership {
   id: string;
   user_id: string;
@@ -330,6 +366,56 @@ export const schoolsApi = {
     } catch (error) {
       console.error('Error fetching student enrollments:', error);
       return [];
+    }
+  },
+
+  createStudentContact: async (
+    schoolId: string,
+    studentId: string,
+    data: {
+      first_name: string;
+      last_name: string;
+      email?: string | null;
+      id_country?: string | null;
+      id_type?: string | null;
+      id_full?: string | null;
+      role: string;
+      primary: boolean;
+      can_check_in_out: boolean;
+      can_view_records: boolean;
+      can_receive_notifications: boolean;
+      valid_from?: string | null;
+      valid_to?: string | null;
+      notes?: string | null;
+    }
+  ): Promise<StudentContact> => {
+    try {
+      const response = await apiClient.post<StudentContact>(
+        `/schools/${schoolId}/students/${studentId}/contacts`,
+        data
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error creating student contact:', error);
+      throw error;
+    }
+  },
+
+  getStudentAttendanceCalendar: async (
+    schoolId: string,
+    studentId: string,
+    year: number,
+    month: number
+  ): Promise<AttendanceCalendarMonth> => {
+    try {
+      const response = await apiClient.get<AttendanceCalendarMonth>(
+        `/schools/${schoolId}/students/${studentId}/attendance/calendar`,
+        { params: { year, month } }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching attendance calendar:', error);
+      throw error;
     }
   },
 

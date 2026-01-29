@@ -14,6 +14,16 @@ import SchoolYearsTab from '@/components/school/SchoolYearsTab';
 
 type TabType = 'details' | 'students' | 'membership' | 'classrooms' | 'enrollments' | 'schoolYears' | 'billing';
 
+const getInitialTab = (): TabType => {
+  if (typeof window !== 'undefined') {
+    const hash = window.location.hash.slice(1);
+    if (['details', 'students', 'membership', 'classrooms', 'enrollments', 'schoolYears', 'billing'].includes(hash)) {
+      return hash as TabType;
+    }
+  }
+  return 'details';
+};
+
 export default function SchoolDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -21,10 +31,15 @@ export default function SchoolDetailPage() {
   
   const [school, setSchool] = useState<School | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabType>('details');
+  const [activeTab, setActiveTab] = useState<TabType>(getInitialTab);
   const [reportStatus, setReportStatus] = useState<SchoolReportResponse | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportChecking, setReportChecking] = useState(false);
+
+  // Update hash when tab changes
+  useEffect(() => {
+    window.location.hash = activeTab;
+  }, [activeTab]);
 
   useEffect(() => {
     loadSchool();
