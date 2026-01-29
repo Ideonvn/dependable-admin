@@ -74,9 +74,9 @@ export const tokenService = {
       this.setTokenData(tokenData);
       return tokenData;
     } catch (error: any) {
-      // Check for 403 error indicating expired/invalid Google token
-      if (error.response?.status === 403) {
-        console.error('Google token expired or invalid, clearing token data');
+      // Check for 401 or 403 errors indicating expired/invalid Google token
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        console.error('Google token expired or invalid (status: ' + error.response.status + '), clearing token data');
         this.clearTokenData();
         throw new Error('GOOGLE_TOKEN_EXPIRED');
       }
