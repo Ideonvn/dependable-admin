@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Receipt, Download, Plus, Calendar, DollarSign, AlertCircle, FileText, Settings, Save, X } from 'lucide-react';
-import { billingApi, Invoice, BillingConfig } from '@/lib/billing';
+import { Receipt, Download, Plus, Calendar, DollarSign, AlertCircle, FileText, Settings, Save, X, MapPin, Mail, Phone, ChevronDown } from 'lucide-react';
+import { billingApi, Invoice, BillingConfig, BillingDetails } from '@/lib/billing';
 
 interface BillingTabProps {
   schoolId: string;
@@ -17,12 +17,16 @@ interface StatusModalState {
 export default function BillingTab({ schoolId }: BillingTabProps) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [config, setConfig] = useState<BillingConfig | null>(null);
+  const [billingDetails, setBillingDetails] = useState<BillingDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [configLoading, setConfigLoading] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
   const [showGenerateForm, setShowGenerateForm] = useState(false);
   const [showConfigForm, setShowConfigForm] = useState(false);
+  const [showDetailsForm, setShowDetailsForm] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
+  const [savingDetails, setSavingDetails] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [statusModal, setStatusModal] = useState<StatusModalState>({
@@ -46,6 +50,20 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
     min_admission_days: 0,
   });
 
+  const [detailsForm, setDetailsForm] = useState<Partial<BillingDetails>>({
+    billing_contact_name: '',
+    billing_contact_email: '',
+    billing_contact_phone: '',
+    address_line_1: '',
+    address_line_2: '',
+    city: '',
+    postal_code: '',
+    country: '',
+    tax_id: '',
+    company_name: '',
+    currency: 'ZAR',
+  });
+
   const addToast = (toast: { title?: string; message: string; variant?: 'success' | 'error' | 'info' }) => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     setToasts((t) => [...t, { id, ...toast }]);
@@ -57,6 +75,7 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
   useEffect(() => {
     loadInvoices();
     loadBillingConfig();
+    loadBillingDetails();
   }, [schoolId]);
 
   const loadBillingConfig = async () => {
@@ -76,6 +95,32 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
       addToast({ title: 'Error', message: 'Failed to load billing config', variant: 'error' });
     } finally {
       setConfigLoading(false);
+    }
+  };
+
+  const loadBillingDetails = async () => {
+    setDetailsLoading(true);
+    try {
+      const data = await billingApi.getBillingDetails(schoolId);
+      setBillingDetails(data);
+      setDetailsForm({
+        billing_contact_name: data.billing_contact_name || '',
+        billing_contact_email: data.billing_contact_email || '',
+        billing_contact_phone: data.billing_contact_phone || '',
+        address_line_1: data.address_line_1 || '',
+        address_line_2: data.address_line_2 || '',
+        city: data.city || '',
+        postal_code: data.postal_code || '',
+        country: data.country || '',
+        tax_id: data.tax_id || '',
+        company_name: data.company_name || '',
+        currency: data.currency || 'ZAR',
+      });
+    } catch (error) {
+      console.error('Error loading billing details:', error);
+      addToast({ title: 'Error', message: 'Failed to load billing details', variant: 'error' });
+    } finally {
+      setDetailsLoading(false);
     }
   };
 
@@ -136,6 +181,34 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
       addToast({ title: 'Error', message: 'Failed to update billing config', variant: 'error' });
     } finally {
       setSavingConfig(false);
+    }
+  };
+
+  const handleUpdateDetails = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingDetails(true);
+    try {
+      const updated = await billingApi.updateBillingDetails(schoolId, {
+        billing_contact_name: detailsForm.billing_contact_name,
+        billing_contact_email: detailsForm.billing_contact_email,
+        billing_contact_phone: detailsForm.billing_contact_phone,
+        address_line_1: detailsForm.address_line_1,
+        address_line_2: detailsForm.address_line_2 || null,
+        city: detailsForm.city,
+        postal_code: detailsForm.postal_code,
+        country: detailsForm.country,
+        tax_id: detailsForm.tax_id || null,
+        company_name: detailsForm.company_name,
+        currency: detailsForm.currency,
+      });
+      setBillingDetails(updated);
+      setShowDetailsForm(false);
+      addToast({ title: 'Success', message: 'Billing details updated successfully!', variant: 'success' });
+    } catch (error) {
+      console.error('Error updating details:', error);
+      addToast({ title: 'Error', message: 'Failed to update billing details', variant: 'error' });
+    } finally {
+      setSavingDetails(false);
     }
   };
 
@@ -208,7 +281,7 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between mb-6 gap-8">
         <div className="flex items-center gap-3">
           <Receipt className="w-6 h-6 text-[#1A1A6D] dark:text-[#20B2AA]" />
           <div>
@@ -216,259 +289,488 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
             <p className="text-sm text-gray-600 dark:text-gray-400">View and manage school invoices</p>
           </div>
         </div>
-        {!showGenerateForm && (
-          <button
-            onClick={() => setShowGenerateForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity"
-          >
-            <Plus className="w-4 h-4" />
-            Generate Invoice
-          </button>
+        {/* Billing Configuration Card */}
+        {config && (
+          <div className="flex-1 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+            <div className="flex items-start justify-between">
+              <div className="flex flex-wrap items-center gap-3 flex-1">
+                <Settings className="w-5 h-5 text-[#1A1A6D] dark:text-[#20B2AA] flex-shrink-0" />
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100 mr-8">Billing Configuration</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 flex-1">
+                  <div>
+                    <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Student Unit Price</div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">R {parseFloat(config.student_unit_price).toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">VAT Rate</div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{(parseFloat(config.vat_rate) * 100).toFixed(1)}%</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Invoice Prefix</div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{config.invoice_prefix}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Invoice Due Days</div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{config.invoice_due_days}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Min Admission Days</div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{config.min_admission_days}</div>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowConfigForm(true)}
+                className="text-sm text-[#1A1A6D] dark:text-[#20B2AA] hover:underline font-medium flex-shrink-0 ml-4"
+              >
+                Edit
+              </button>
+            </div>
+          </div>
         )}
+
+        {/* Billing Configuration Edit Modal */}
+        {showConfigForm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100">Edit Billing Configuration</h4>
+                </div>
+                <button
+                  onClick={() => setShowConfigForm(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <form onSubmit={handleUpdateConfig} className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Student Unit Price (R)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={configForm.student_unit_price}
+                      onChange={(e) => setConfigForm({ ...configForm, student_unit_price: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      VAT Rate (0-1)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="1"
+                      value={configForm.vat_rate}
+                      onChange={(e) => setConfigForm({ ...configForm, vat_rate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Invoice Prefix
+                    </label>
+                    <input
+                      type="text"
+                      value={configForm.invoice_prefix}
+                      onChange={(e) => setConfigForm({ ...configForm, invoice_prefix: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Invoice Due Days
+                    </label>
+                    <input
+                      type="number"
+                      value={configForm.invoice_due_days}
+                      onChange={(e) => setConfigForm({ ...configForm, invoice_due_days: parseInt(e.target.value) })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      required
+                      min="1"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Min Admission Days
+                    </label>
+                    <input
+                      type="number"
+                      value={configForm.min_admission_days}
+                      onChange={(e) => setConfigForm({ ...configForm, min_admission_days: parseInt(e.target.value) })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      required
+                      min="1"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-4">
+                  <button
+                    type="submit"
+                    disabled={savingConfig}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {savingConfig ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Save Configuration
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowConfigForm(false)}
+                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        <button
+          onClick={() => setShowGenerateForm(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity"
+        >
+          <Plus className="w-4 h-4" />
+          Generate Invoice
+        </button>
       </div>
 
-      {/* Billing Configuration Card */}
-      {config && !showConfigForm && (
-        <div className="mb-6 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Settings className="w-5 h-5 text-[#1A1A6D] dark:text-[#20B2AA]" />
-              <h4 className="font-semibold text-gray-900 dark:text-gray-100">Billing Configuration</h4>
+      {/* Billing Details Card */}
+      {billingDetails && (
+        <div className="mb-4 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex flex-wrap items-center gap-3 flex-1">
+              <MapPin className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0 mr-8">Billing Details</h4>
+              <div className="flex flex-wrap gap-6 flex-1 items-start">
+                <div>
+                  <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Company Name</div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{billingDetails.company_name || 'Not set'}</div>
+                </div>
+                {billingDetails.tax_id && (
+                  <div>
+                    <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Tax ID</div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{billingDetails.tax_id}</div>
+                  </div>
+                )}
+                <div>
+                  <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Contact Name</div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{billingDetails.billing_contact_name || 'Not set'}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Email</div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{billingDetails.billing_contact_email || 'Not set'}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Phone</div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{billingDetails.billing_contact_phone || 'Not set'}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Address</div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {billingDetails.address_line_1 || 'Not set'}
+                    {(billingDetails.city || billingDetails.postal_code) && (
+                      <div className="text-xs text-gray-600 dark:text-gray-400">
+                        {[billingDetails.city, billingDetails.postal_code].filter(Boolean).join(', ')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
             <button
-              onClick={() => setShowConfigForm(true)}
-              className="text-sm text-[#1A1A6D] dark:text-[#20B2AA] hover:underline font-medium"
+              onClick={() => setShowDetailsForm(true)}
+              className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline font-medium flex-shrink-0 ml-4"
             >
               Edit
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div>
-              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Student Unit Price</div>
-              <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">R {parseFloat(config.student_unit_price).toFixed(2)}</div>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">VAT Rate</div>
-              <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">{(parseFloat(config.vat_rate) * 100).toFixed(1)}%</div>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Invoice Prefix</div>
-              <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">{config.invoice_prefix}</div>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Invoice Due Days</div>
-              <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">{config.invoice_due_days}</div>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Min Admission Days</div>
-              <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">{config.min_admission_days}</div>
-            </div>
-          </div>
         </div>
       )}
 
-      {/* Billing Configuration Edit Form */}
-      {showConfigForm && (
-        <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Settings className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              <h4 className="font-semibold text-gray-900 dark:text-gray-100">Edit Billing Configuration</h4>
+      {/* Billing Details Edit Modal */}
+      {showDetailsForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Edit Billing Details</h3>
+              </div>
+              <button
+                onClick={() => setShowDetailsForm(false)}
+                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <button
-              onClick={() => setShowConfigForm(false)}
-              className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-            >
-              ✕
-            </button>
-          </div>
-          <form onSubmit={handleUpdateConfig} className="space-y-4">
+            <div className="p-6">
+              <form onSubmit={handleUpdateDetails} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Student Unit Price (R)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={configForm.student_unit_price}
-                  onChange={(e) => setConfigForm({ ...configForm, student_unit_price: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  VAT Rate (0-1)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="1"
-                  value={configForm.vat_rate}
-                  onChange={(e) => setConfigForm({ ...configForm, vat_rate: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Invoice Prefix
-                </label>
-                <input
-                  type="text"
-                  value={configForm.invoice_prefix}
-                  onChange={(e) => setConfigForm({ ...configForm, invoice_prefix: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Invoice Due Days
-                </label>
-                <input
-                  type="number"
-                  value={configForm.invoice_due_days}
-                  onChange={(e) => setConfigForm({ ...configForm, invoice_due_days: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                  required
-                  min="1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Min Admission Days
-                </label>
-                <input
-                  type="number"
-                  value={configForm.min_admission_days}
-                  onChange={(e) => setConfigForm({ ...configForm, min_admission_days: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                  required
-                  min="1"
-                />
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Company Name
+                    </label>
+                    <input
+                      type="text"
+                      value={detailsForm.company_name || ''}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, company_name: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Tax ID / VAT Number
+                    </label>
+                    <input
+                      type="text"
+                      value={detailsForm.tax_id || ''}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, tax_id: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Billing Contact Name
+                    </label>
+                    <input
+                      type="text"
+                      value={detailsForm.billing_contact_name || ''}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, billing_contact_name: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Billing Contact Email
+                    </label>
+                    <input
+                      type="email"
+                      value={detailsForm.billing_contact_email || ''}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, billing_contact_email: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Billing Contact Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={detailsForm.billing_contact_phone || ''}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, billing_contact_phone: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Currency
+                    </label>
+                    <select
+                      value={detailsForm.currency || 'ZAR'}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, currency: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    >
+                      <option value="ZAR">ZAR</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Address Line 1
+                    </label>
+                    <input
+                      type="text"
+                      value={detailsForm.address_line_1 || ''}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, address_line_1: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Address Line 2 (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={detailsForm.address_line_2 || ''}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, address_line_2: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      value={detailsForm.city || ''}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, city: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Postal Code
+                    </label>
+                    <input
+                      type="text"
+                      value={detailsForm.postal_code || ''}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, postal_code: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Country
+                    </label>
+                    <input
+                      type="text"
+                      value={detailsForm.country || ''}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, country: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-4">
+                  <button
+                    type="submit"
+                    disabled={savingDetails}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {savingDetails ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Save Details
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowDetailsForm(false)}
+                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </div>
-            <div className="flex gap-2 pt-4">
-              <button
-                type="submit"
-                disabled={savingConfig}
-                className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                {savingConfig ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    Save Configuration
-                  </>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowConfigForm(false)}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+          </div>
         </div>
       )}
 
       {/* Generate Invoice Form */}
       {showGenerateForm && (
-        <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              <h4 className="font-semibold text-gray-900 dark:text-gray-100">Generate New Invoice</h4>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100">Generate New Invoice</h4>
+              </div>
+              <button
+                onClick={() => setShowGenerateForm(false)}
+                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <button
-              onClick={() => setShowGenerateForm(false)}
-              className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-            >
-              ✕
-            </button>
-          </div>
-          <form onSubmit={handleGenerateInvoice} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Billing Month
-                </label>
-                <select
-                  value={formData.billing_month}
-                  onChange={(e) => setFormData({ ...formData, billing_month: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                  required
-                >
-                  {months.map((month, index) => (
-                    <option key={index + 1} value={index + 1}>
-                      {month}
-                    </option>
-                  ))}
-                </select>
+            <form onSubmit={handleGenerateInvoice} className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Billing Month
+                  </label>
+                  <select
+                    value={formData.billing_month}
+                    onChange={(e) => setFormData({ ...formData, billing_month: parseInt(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    required
+                  >
+                    {months.map((month, index) => (
+                      <option key={index + 1} value={index + 1}>
+                        {month}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Billing Year
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.billing_year}
+                    onChange={(e) => setFormData({ ...formData, billing_year: parseInt(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    required
+                    min="2020"
+                    max="2100"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Billing Year
+                  Notes (Optional)
                 </label>
-                <input
-                  type="number"
-                  value={formData.billing_year}
-                  onChange={(e) => setFormData({ ...formData, billing_year: parseInt(e.target.value) })}
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                  required
-                  min="2020"
-                  max="2100"
+                  rows={3}
+                  placeholder="Add any notes about this invoice..."
                 />
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Notes (Optional)
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                rows={3}
-                placeholder="Add any notes about this invoice..."
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={generating}
-                className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                {generating ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="w-4 h-4" />
-                    Generate
-                  </>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowGenerateForm(false)}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={generating}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {generating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Generate
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowGenerateForm(false)}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

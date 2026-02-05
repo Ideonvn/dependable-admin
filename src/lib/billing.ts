@@ -26,6 +26,21 @@ export interface BillingConfig {
   min_admission_days: number;
 }
 
+export interface BillingDetails {
+  id: string | null;
+  company_name: string | null;
+  tax_id: string | null;
+  billing_contact_name: string | null;
+  billing_contact_email: string | null;
+  billing_contact_phone: string | null;
+  currency: string | null;
+  address_line_1: string | null;
+  address_line_2: string | null;
+  city: string | null;
+  postal_code: string | null;
+  country: string | null;
+}
+
 export interface GenerateInvoiceRequest {
   billing_month: number;
   billing_year: number;
@@ -97,6 +112,28 @@ export const billingApi = {
       return response.data;
     } catch (error) {
       console.error('Error updating invoice status:', error);
+      throw error;
+    }
+  },
+
+  // Get billing details for a school
+  getBillingDetails: async (schoolId: string): Promise<BillingDetails> => {
+    try {
+      const response = await apiClient.get<BillingDetails>(`/billing/schools/${schoolId}/billing-details`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching billing details:', error);
+      throw error;
+    }
+  },
+
+  // Update billing details for a school
+  updateBillingDetails: async (schoolId: string, data: Partial<BillingDetails>): Promise<BillingDetails> => {
+    try {
+      const response = await apiClient.put<BillingDetails>(`/billing/schools/${schoolId}/billing-details`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating billing details:', error);
       throw error;
     }
   },
