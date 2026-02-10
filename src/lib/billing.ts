@@ -15,6 +15,8 @@ export interface Invoice {
   status: 'draft' | 'issued' | 'paid' | 'overdue' | 'cancelled';
   billable_student_count: number;
   notes: string | null;
+  plan_type?: 'monthly' | 'annual';
+  period_end_date?: string | null;
 }
 
 export interface BillingConfig {
@@ -39,6 +41,16 @@ export interface BillingDetails {
   city: string | null;
   postal_code: string | null;
   country: string | null;
+}
+
+export interface SchoolPlan {
+  id: string;
+  plan_type: 'monthly' | 'annual';
+  annual_start_date?: string | null;
+  annual_end_date?: string | null;
+  annual_unit_price?: string | null;
+  billing_student_count: number;
+  next_invoice_date: string;
 }
 
 export interface GenerateInvoiceRequest {
@@ -134,6 +146,28 @@ export const billingApi = {
       return response.data;
     } catch (error) {
       console.error('Error updating billing details:', error);
+      throw error;
+    }
+  },
+
+  // Get school plan
+  getSchoolPlan: async (schoolId: string): Promise<SchoolPlan> => {
+    try {
+      const response = await apiClient.get<SchoolPlan>(`/billing/schools/${schoolId}/plan`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching school plan:', error);
+      throw error;
+    }
+  },
+
+  // Update school plan
+  updateSchoolPlan: async (schoolId: string, data: Partial<SchoolPlan>): Promise<SchoolPlan> => {
+    try {
+      const response = await apiClient.put<SchoolPlan>(`/billing/schools/${schoolId}/plan`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating school plan:', error);
       throw error;
     }
   },
