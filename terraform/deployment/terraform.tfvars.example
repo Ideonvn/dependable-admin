@@ -22,6 +22,9 @@ nextauth_secret = ""
 google_client_id     = ""
 google_client_secret = ""
 
+# Sentry token for source map upload
+sentry_auth_token = ""
+
 # Optional: Custom Domain Configuration
 # Uncomment and configure if using custom domain
 # app_domain = "admin.dependable.co.za"

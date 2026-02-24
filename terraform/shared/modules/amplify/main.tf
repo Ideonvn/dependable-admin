@@ -88,7 +88,7 @@ resource "aws_iam_role" "amplify_role" {
       {
         Effect = "Allow"
         Principal = {
-          Service: [
+          Service : [
             "amplify.eu-west-1.amazonaws.com",
             "amplify.amazonaws.com"
           ]

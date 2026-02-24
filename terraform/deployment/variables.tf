@@ -36,6 +36,13 @@ variable "google_client_secret" {
   sensitive   = true
 }
 
+variable "sentry_auth_token" {
+  description = "Sentry auth token for source map upload"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "app_domain" {
   description = "Custom domain for the admin app (leave empty to use Amplify default domain)"
   type        = string

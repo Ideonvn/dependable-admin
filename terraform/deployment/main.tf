@@ -19,6 +19,7 @@ module "dependable-admin-app" {
     AUTH_SECRET          = var.nextauth_secret
     GOOGLE_CLIENT_ID     = var.google_client_id
     GOOGLE_CLIENT_SECRET = var.google_client_secret
+    SENTRY_AUTH_TOKEN    = var.sentry_auth_token
     NEXT_PUBLIC_APP_NAME = "Dependable Admin"
     NODE_ENV             = "production"
   }
