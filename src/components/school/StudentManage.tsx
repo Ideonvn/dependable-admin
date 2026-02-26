@@ -13,6 +13,7 @@ interface StudentManageProps {
 }
 
 type TabKey = 'details' | 'contacts' | 'enrollments' | 'attendance';
+type StudentStatus = 'active' | 'left' | 'graduated';
 
 const getInitialTab = (): TabKey => {
   if (typeof window !== 'undefined') {
@@ -28,11 +29,14 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
   const [activeTab, setActiveTab] = useState<TabKey>(getInitialTab);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<{ id: string; title?: string; message: string; variant?: 'success' | 'error' | 'info' }[]>([]);
   const [expandedContactId, setExpandedContactId] = useState<string | null>(null);
   const [showCreateContactModal, setShowCreateContactModal] = useState(false);
   const [creatingContact, setCreatingContact] = useState(false);
+  const [showEditContactModal, setShowEditContactModal] = useState(false);
+  const [updatingContact, setUpdatingContact] = useState(false);
+  const [editingContactId, setEditingContactId] = useState<string | null>(null);
 
   const [details, setDetails] = useState<StudentDetails | null>(null);
   const [contacts, setContacts] = useState<StudentContact[]>([]);
@@ -43,6 +47,9 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [dob, setDob] = useState('');
+  const [externalRef, setExternalRef] = useState('');
+  const [admittedOn, setAdmittedOn] = useState('');
+  const [studentStatus, setStudentStatus] = useState<StudentStatus>('active');
   const [gender, setGender] = useState<'MALE' | 'FEMALE' | 'OTHER'>('OTHER');
   const [weightAtBirth, setWeightAtBirth] = useState<string>('');
   const [lengthAtBirth, setLengthAtBirth] = useState<string>('');
@@ -72,6 +79,34 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
     notes: '',
   });
 
+  const [editContactFormData, setEditContactFormData] = useState({
+    person_id: '',
+    first_name: '',
+    last_name: '',
+    email: '',
+    id_country: '',
+    id_type: '',
+    id_full: '',
+    id_masked: '',
+    role: 'GUARDIAN',
+    primary: false,
+    can_check_in_out: false,
+    can_view_records: false,
+    can_receive_notifications: false,
+    valid_from: '',
+    valid_to: '',
+    notes: '',
+    image_filename: '',
+  });
+
+  const addToast = (toast: { title?: string; message: string; variant?: 'success' | 'error' | 'info' }) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setToasts((t) => [...t, { id, ...toast }]);
+    setTimeout(() => {
+      setToasts((t) => t.filter((x) => x.id !== id));
+    }, 4000);
+  };
+
   // Update hash when tab changes
   useEffect(() => {
     window.location.hash = activeTab;
@@ -81,7 +116,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
     let mounted = true;
     async function load() {
       setLoading(true);
-      setError(null);
+      setLoadError(null);
       try {
         const [d, c, e] = await Promise.all([
           schoolsApi.getStudentDetails(schoolId, studentId),
@@ -97,12 +132,15 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
         setFirstName(d.first_name);
         setLastName(d.last_name);
         setDob(d.date_of_birth);
+        setExternalRef(d.external_ref ?? '');
+        setAdmittedOn(d.admitted_on ?? '');
+        setStudentStatus(d.status);
         setGender(d.gender);
         setWeightAtBirth(d.weight_at_birth?.toString() ?? '');
         setLengthAtBirth(d.length_at_birth?.toString() ?? '');
       } catch (err) {
         console.error(err);
-        setError('Failed to load student data');
+        setLoadError('Failed to load student data');
       } finally {
         if (mounted) setLoading(false);
       }
@@ -132,6 +170,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
         }
       } catch (err) {
         console.error('Failed to load attendance calendar:', err);
+        addToast({ title: 'Error', message: 'Failed to load attendance calendar.', variant: 'error' });
       } finally {
         if (mounted) {
           setAttendanceLoading(false);
@@ -145,6 +184,16 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
   }, [schoolId, studentId, activeTab, currentYear, currentMonth]);
 
   const fullName = useMemo(() => `${firstName} ${lastName}`.trim(), [firstName, lastName]);
+
+  const studentStatusClasses =
+    studentStatus === 'active'
+      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+      : studentStatus === 'left'
+      ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+      : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400';
+
+  const studentStatusLabel =
+    studentStatus === 'active' ? 'Active' : studentStatus === 'left' ? 'Left' : 'Graduated';
 
   const onSelectImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -199,20 +248,80 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
         valid_to: '',
         notes: '',
       });
-      setSuccess('Contact created successfully!');
-      setTimeout(() => setSuccess(null), 3000);
+      addToast({ title: 'Success', message: 'Contact created successfully!', variant: 'success' });
     } catch (err) {
       console.error(err);
-      setError('Failed to create contact');
+      addToast({ title: 'Error', message: 'Failed to create contact.', variant: 'error' });
     } finally {
       setCreatingContact(false);
     }
   };
 
+  const openEditContactModal = (contact: StudentContact) => {
+    setEditingContactId(contact.id);
+    setEditContactFormData({
+      person_id: contact.person_id,
+      first_name: contact.first_name,
+      last_name: contact.last_name,
+      email: contact.email ?? '',
+      id_country: contact.id_country ?? '',
+      id_type: contact.id_type ?? '',
+      id_full: contact.id_full ?? '',
+      id_masked: contact.id_masked ?? '',
+      role: contact.role,
+      primary: contact.primary,
+      can_check_in_out: contact.can_check_in_out,
+      can_view_records: contact.can_view_records,
+      can_receive_notifications: contact.can_receive_notifications,
+      valid_from: contact.valid_from ?? '',
+      valid_to: contact.valid_to ?? '',
+      notes: contact.notes ?? '',
+      image_filename: contact.image_filename ?? '',
+    });
+    setShowEditContactModal(true);
+  };
+
+  const handleUpdateContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingContactId) return;
+
+    setUpdatingContact(true);
+    try {
+      const updatedContact = await schoolsApi.updateStudentContact(schoolId, studentId, editingContactId, {
+        person_id: editContactFormData.person_id,
+        email: editContactFormData.email || null,
+        full_name: `${editContactFormData.first_name.trim()} ${editContactFormData.last_name.trim()}`.trim(),
+        first_name: editContactFormData.first_name.trim(),
+        last_name: editContactFormData.last_name.trim(),
+        id_country: editContactFormData.id_country || null,
+        id_type: editContactFormData.id_type || null,
+        id_full: editContactFormData.id_full || null,
+        id_masked: editContactFormData.id_masked || null,
+        role: editContactFormData.role,
+        primary: editContactFormData.primary,
+        can_check_in_out: editContactFormData.can_check_in_out,
+        can_view_records: editContactFormData.can_view_records,
+        can_receive_notifications: editContactFormData.can_receive_notifications,
+        valid_from: editContactFormData.valid_from || null,
+        valid_to: editContactFormData.valid_to || null,
+        notes: editContactFormData.notes || null,
+        image_filename: editContactFormData.image_filename || null,
+      });
+
+      setContacts((prev) => prev.map((contact) => (contact.id === updatedContact.id ? updatedContact : contact)));
+      setShowEditContactModal(false);
+      setEditingContactId(null);
+      addToast({ title: 'Success', message: 'Contact updated successfully!', variant: 'success' });
+    } catch (err) {
+      console.error(err);
+      addToast({ title: 'Error', message: 'Failed to update contact.', variant: 'error' });
+    } finally {
+      setUpdatingContact(false);
+    }
+  };
+
   const onSave = async () => {
     setSaving(true);
-    setError(null);
-    setSuccess(null);
     try {
       if (!dependantId) {
         throw new Error('Dependant ID not available');
@@ -228,14 +337,13 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
       if (imageFile) {
         await schoolsApi.uploadStudentImage(dependantId, imageFile);
       }
-      setSuccess('Student updated successfully');
-      setDetails((prev) => prev ? { ...prev, first_name: firstName, last_name: lastName, full_name: fullName, date_of_birth: dob, gender, image_filename: imagePreview ? 'preview' : prev.image_filename } : prev);
+      addToast({ title: 'Success', message: 'Student updated successfully', variant: 'success' });
+      setDetails((prev) => prev ? { ...prev, first_name: firstName, last_name: lastName, full_name: fullName, date_of_birth: dob, external_ref: externalRef || null, admitted_on: admittedOn || null, status: studentStatus, gender, image_filename: imagePreview ? 'preview' : prev.image_filename } : prev);
     } catch (err) {
       console.error(err);
-      setError('Failed to save changes');
+      addToast({ title: 'Error', message: 'Failed to save changes.', variant: 'error' });
     } finally {
       setSaving(false);
-      setTimeout(() => setSuccess(null), 2000);
     }
   };
 
@@ -247,11 +355,11 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
     );
   }
 
-  if (error) {
+  if (loadError) {
     return (
       <div className="p-6 flex items-center gap-2 text-red-700 dark:text-red-400">
         <AlertCircle className="w-5 h-5" />
-        <span className="text-sm">{error}</span>
+        <span className="text-sm">{loadError}</span>
       </div>
     );
   }
@@ -279,7 +387,12 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
             )}
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{fullName || details?.full_name || 'Student'}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{fullName || details?.full_name || 'Student'}</h2>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${studentStatusClasses}`}>
+                {studentStatusLabel}
+              </span>
+            </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">Manage student details, contacts and enrollments</p>
           </div>
         </div>
@@ -292,13 +405,6 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
           Save Changes
         </button>
       </div>
-
-      {success && (
-        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-          <CheckCircle2 className="w-5 h-5" />
-          <span className="text-sm">{success}</span>
-        </div>
-      )}
 
       {/* Tabs */}
       <div>
@@ -323,6 +429,36 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date of Birth</label>
                 <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">External Reference</label>
+                <input
+                  value={externalRef}
+                  onChange={(e) => setExternalRef(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  placeholder="External student reference"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Admitted On</label>
+                <input
+                  type="date"
+                  value={admittedOn}
+                  onChange={(e) => setAdmittedOn(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Student Status</label>
+                <select
+                  value={studentStatus}
+                  onChange={(e) => setStudentStatus(e.target.value as StudentStatus)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="active">Active</option>
+                  <option value="left">Left</option>
+                  <option value="graduated">Graduated</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Gender</label>
@@ -503,6 +639,16 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                               <div className="text-xs font-mono text-gray-600 dark:text-gray-400">
                                 {contact.person_id}
                               </div>
+                            </div>
+
+                            <div className="md:col-span-2 flex justify-end pt-2">
+                              <button
+                                type="button"
+                                onClick={() => openEditContactModal(contact)}
+                                className="px-3 py-1.5 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white text-sm rounded-lg hover:opacity-90 transition-opacity"
+                              >
+                                Edit Contact
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -808,6 +954,247 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
         </div>
       </div>
 
+      {/* Edit Contact Modal */}
+      {showEditContactModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Edit Student Contact
+              </h3>
+              <button
+                onClick={() => {
+                  setShowEditContactModal(false);
+                  setEditingContactId(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateContact} className="p-6 space-y-4">
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Basic Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      First Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={editContactFormData.first_name}
+                      onChange={(e) => setEditContactFormData({ ...editContactFormData, first_name: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Last Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={editContactFormData.last_name}
+                      onChange={(e) => setEditContactFormData({ ...editContactFormData, last_name: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={editContactFormData.email}
+                      onChange={(e) => setEditContactFormData({ ...editContactFormData, email: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Role *
+                    </label>
+                    <select
+                      value={editContactFormData.role}
+                      onChange={(e) => setEditContactFormData({ ...editContactFormData, role: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      required
+                    >
+                      <option value="MOTHER">Mother</option>
+                      <option value="FATHER">Father</option>
+                      <option value="SIBLING">Sibling</option>
+                      <option value="GUARDIAN">Guardian</option>
+                      <option value="TEACHER">Teacher</option>
+                      <option value="OTHER">Other</option>
+                      <option value="PICKUP_CONTACT">Pickup Contact</option>
+                      <option value="EMERGENCY_CONTACT">Emergency Contact</option>
+                      <option value="DRIVER">Driver</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Identification</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      ID Country
+                    </label>
+                    <input
+                      type="text"
+                      value={editContactFormData.id_country}
+                      onChange={(e) => setEditContactFormData({ ...editContactFormData, id_country: e.target.value })}
+                      placeholder="e.g., ZA"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      ID Type
+                    </label>
+                    <input
+                      type="text"
+                      value={editContactFormData.id_type}
+                      onChange={(e) => setEditContactFormData({ ...editContactFormData, id_type: e.target.value })}
+                      placeholder="e.g., national_id"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      ID Full
+                    </label>
+                    <input
+                      type="text"
+                      value={editContactFormData.id_full}
+                      onChange={(e) => setEditContactFormData({ ...editContactFormData, id_full: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Permissions</h4>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editContactFormData.primary}
+                      onChange={(e) => setEditContactFormData({ ...editContactFormData, primary: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-300 dark:border-gray-700"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Primary Contact</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editContactFormData.can_check_in_out}
+                      onChange={(e) => setEditContactFormData({ ...editContactFormData, can_check_in_out: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-300 dark:border-gray-700"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Can Check In/Out</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editContactFormData.can_view_records}
+                      onChange={(e) => setEditContactFormData({ ...editContactFormData, can_view_records: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-300 dark:border-gray-700"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Can View Records</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editContactFormData.can_receive_notifications}
+                      onChange={(e) => setEditContactFormData({ ...editContactFormData, can_receive_notifications: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-300 dark:border-gray-700"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Can Receive Notifications</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Validity Period</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Valid From
+                    </label>
+                    <input
+                      type="date"
+                      value={editContactFormData.valid_from}
+                      onChange={(e) => setEditContactFormData({ ...editContactFormData, valid_from: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Valid To
+                    </label>
+                    <input
+                      type="date"
+                      value={editContactFormData.valid_to}
+                      onChange={(e) => setEditContactFormData({ ...editContactFormData, valid_to: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Additional Information</h4>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Notes
+                  </label>
+                  <textarea
+                    value={editContactFormData.notes}
+                    onChange={(e) => setEditContactFormData({ ...editContactFormData, notes: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  type="submit"
+                  disabled={updatingContact}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {updatingContact ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Save Contact
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditContactModal(false);
+                    setEditingContactId(null);
+                  }}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Create Contact Modal */}
       {showCreateContactModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -1048,6 +1435,32 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
           </div>
         </div>
       )}
+
+      {/* Toast container */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`max-w-sm w-full px-4 py-3 rounded-lg shadow-lg border transition-opacity bg-white dark:bg-[#111217] border-gray-200 dark:border-gray-800 ${
+              t.variant === 'success'
+                ? 'ring-2 ring-green-500 dark:ring-green-400'
+                : t.variant === 'error'
+                ? 'ring-2 ring-red-500 dark:ring-red-400'
+                : 'ring-1 ring-gray-200 dark:ring-gray-700'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-1">
+                {t.title && <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.title}</div>}
+                <div className="text-sm text-gray-700 dark:text-gray-300">{t.message}</div>
+              </div>
+              <button onClick={() => setToasts((s) => s.filter((x) => x.id !== t.id))} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                ✕
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

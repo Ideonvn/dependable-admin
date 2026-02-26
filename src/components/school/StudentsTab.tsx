@@ -41,12 +41,10 @@ export default function StudentsTab({ schoolId }: StudentsTabProps) {
 
   const getPresenceStatusColor = (status: Student['presence_status']) => {
     switch (status) {
-      case 'checked_in':
+      case 'in':
         return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
-      case 'checked_out':
+      case 'out':
         return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300';
-      case 'absent':
-        return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300';
       default:
         return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300';
     }
@@ -54,12 +52,36 @@ export default function StudentsTab({ schoolId }: StudentsTabProps) {
 
   const getPresenceStatusLabel = (status: Student['presence_status']) => {
     switch (status) {
-      case 'checked_in':
+      case 'in':
         return 'Checked In';
-      case 'checked_out':
+      case 'out':
         return 'Checked Out';
-      case 'absent':
-        return 'Absent';
+      default:
+        return 'Unknown';
+    }
+  };
+
+  const getEnrollmentStatusColor = (status: Student['status']) => {
+    switch (status) {
+      case 'active':
+        return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
+      case 'left':
+        return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300';
+      case 'graduated':
+        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300';
+      default:
+        return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300';
+    }
+  };
+
+  const getEnrollmentStatusLabel = (status: Student['status']) => {
+    switch (status) {
+      case 'active':
+        return 'Active';
+      case 'left':
+        return 'Left';
+      case 'graduated':
+        return 'Graduated';
       default:
         return 'Unknown';
     }
@@ -112,7 +134,9 @@ export default function StudentsTab({ schoolId }: StudentsTabProps) {
               <tr className="border-b border-gray-200 dark:border-gray-700">
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Student</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Gender</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Status</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Enrollment Status</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Admitted On</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Presence Status</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Last Activity</th>
               </tr>
             </thead>
@@ -148,6 +172,14 @@ export default function StudentsTab({ schoolId }: StudentsTabProps) {
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">
                     {student.gender.charAt(0) + student.gender.slice(1).toLowerCase()}
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEnrollmentStatusColor(student.status)}`}>
+                      {getEnrollmentStatusLabel(student.status)}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">
+                    {student.admitted_on ? new Date(student.admitted_on).toLocaleDateString() : '-'}
                   </td>
                   <td className="py-3 px-4">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPresenceStatusColor(student.presence_status)}`}>

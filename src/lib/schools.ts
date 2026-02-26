@@ -69,10 +69,13 @@ export interface School {
 export interface Student {
   id: string;
   dependant_id: string;
+  external_ref: string | null;
+  admitted_on: string | null;
+  status: 'active' | 'left' | 'graduated';
   full_name: string;
   gender: 'MALE' | 'FEMALE' | 'OTHER';
   image_filename: string | null;
-  presence_status: 'checked_in' | 'checked_out' | 'absent' | 'unknown';
+  presence_status: 'in' | 'out' | 'unknown';
   presence_changed_at: string | null;
   last_checkin_at: string | null;
   last_checkout_at: string | null;
@@ -82,6 +85,9 @@ export interface Student {
 export interface StudentDetails {
   id: string;
   dependant_id: string;
+  external_ref: string | null;
+  admitted_on: string | null;
+  status: 'active' | 'left' | 'graduated';
   first_name: string;
   last_name: string;
   full_name: string;
@@ -269,6 +275,9 @@ export const schoolsApi = {
       const response = await apiClient.get<{
         id: string;
         dependant_id: string;
+        external_ref: string | null;
+        admitted_on: string | null;
+        status: 'active' | 'left' | 'graduated';
         full_name: string;
         gender: 'MALE' | 'FEMALE' | 'OTHER';
         image_filename: string | null;
@@ -288,6 +297,9 @@ export const schoolsApi = {
       return {
         id: data.id,
         dependant_id: data.dependant_id,
+        external_ref: data.external_ref,
+        admitted_on: data.admitted_on,
+        status: data.status,
         first_name: data.dependant.first_name,
         last_name: data.dependant.last_name,
         full_name: data.full_name,
@@ -397,6 +409,43 @@ export const schoolsApi = {
       return response.data;
     } catch (error) {
       console.error('Error creating student contact:', error);
+      throw error;
+    }
+  },
+
+  updateStudentContact: async (
+    schoolId: string,
+    studentId: string,
+    contactId: string,
+    data: {
+      person_id: string;
+      email?: string | null;
+      full_name: string;
+      first_name: string;
+      last_name: string;
+      id_country?: string | null;
+      id_type?: string | null;
+      id_full?: string | null;
+      id_masked?: string | null;
+      role: string;
+      primary: boolean;
+      can_check_in_out: boolean;
+      can_view_records: boolean;
+      can_receive_notifications: boolean;
+      valid_from?: string | null;
+      valid_to?: string | null;
+      notes?: string | null;
+      image_filename?: string | null;
+    }
+  ): Promise<StudentContact> => {
+    try {
+      const response = await apiClient.put<StudentContact>(
+        `/schools/${schoolId}/students/${studentId}/contacts/${contactId}`,
+        data
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error updating student contact:', error);
       throw error;
     }
   },
