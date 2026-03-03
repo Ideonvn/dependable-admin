@@ -2,11 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, GraduationCap, Building2, ClipboardList } from 'lucide-react';
+import { RefreshCw, Building2, ClipboardList, Users } from 'lucide-react';
 import { schoolsApi, School } from '@/lib/schools';
 import SchoolCardMain from '@/components/SchoolCardMain';
 
-export default function DashboardClient() {
+interface DashboardClientProps {
+  isSuperAdmin?: boolean;
+}
+
+export default function DashboardClient({ isSuperAdmin = false }: DashboardClientProps) {
   const router = useRouter();
   const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +51,16 @@ export default function DashboardClient() {
             <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
+
+          {isSuperAdmin && (
+            <button
+              onClick={() => router.push('/system/users')}
+              className="flex items-center gap-2 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg hover:opacity-90 transition-all shadow-lg hover:shadow-xl font-medium"
+            >
+              <Users className="w-5 h-5" />
+              System Users
+            </button>
+          )}
           
           <button
             onClick={() => router.push('/onboarding')}
