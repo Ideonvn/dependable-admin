@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle, Key, Pencil, RefreshCw, Search, ShieldAlert, Trash2, UserCheck, UserX, Users, X } from 'lucide-react';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import AlertDialog from '@/components/AlertDialog';
 import { systemUsersApi, SystemUser } from '@/lib/users';
 
 // Helper to map API response to internal format (keeping snake_case for consistency with API)
@@ -14,7 +13,9 @@ const mapSystemUser = (user: SystemUser) => ({
   email: user.email,
   firstName: user.first_name,
   lastName: user.last_name,
-  idNumber: user.id_number_masked || '',
+  idNumber: user.id_number_masked,
+  idCountry: user.id_country,
+  idType: user.id_type,
   hasLoginUser: user.has_login_user,
   authActive: user.auth_active,
   isAdmin: user.is_admin,
@@ -22,6 +23,16 @@ const mapSystemUser = (user: SystemUser) => ({
 });
 
 type MappedUser = ReturnType<typeof mapSystemUser>;
+
+type EditFormData = {
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  idNumber: string | null;
+  idCountry: string | null;
+  idType: string | null;
+  isAdmin: boolean;
+};
 
 const formatDate = (value: string) => {
   return new Date(value).toLocaleDateString('en-ZA', {
@@ -52,12 +63,7 @@ export default function SystemUsersClient() {
     isOpen: boolean;
     action: 'deactivate' | 'activate' | 'reset-password' | 'add-admin' | 'remove-admin' | 'schedule-deletion' | null;
   }>({ isOpen: false, action: null });
-  const [alertDialog, setAlertDialog] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    variant: 'success' | 'error' | 'info';
-  }>({ isOpen: false, title: '', message: '', variant: 'info' });
+  const [toasts, setToasts] = useState<{ id: string; title?: string; message: string; variant?: 'success' | 'error' | 'info' }[]>([]);
 
   // Debounce search term - only search endpoint if 3+ characters
   useEffect(() => {
@@ -129,13 +135,31 @@ export default function SystemUsersClient() {
   const allFilteredSelected = filteredUsers.length > 0 && filteredUsers.every((user) => selectedUserIds.has(user.personId));
   const someFilteredSelected = filteredUsers.some((user) => selectedUserIds.has(user.personId)) && !allFilteredSelected;
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<EditFormData>({
     firstName: '',
     lastName: '',
-    email: '',
-    idNumber: '',
+    email: null,
+    idNumber: null,
+    idCountry: null,
+    idType: null,
     isAdmin: false,
   });
+
+  const toNullableString = (value: string | null) => {
+    if (value === null) {
+      return null;
+    }
+    const trimmed = value.trim();
+    return trimmed === '' ? null : trimmed;
+  };
+
+  const addToast = (toast: { title?: string; message: string; variant?: 'success' | 'error' | 'info' }) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setToasts((current) => [...current, { id, ...toast }]);
+    setTimeout(() => {
+      setToasts((current) => current.filter((toastItem) => toastItem.id !== id));
+    }, 4000);
+  };
 
   // Selection handlers
   const toggleSelectAll = () => {
@@ -182,6 +206,8 @@ export default function SystemUsersClient() {
       lastName: user.lastName,
       email: user.email,
       idNumber: user.idNumber,
+      idCountry: user.idCountry,
+      idType: user.idType,
       isAdmin: user.isAdmin,
     });
   };
@@ -194,8 +220,11 @@ export default function SystemUsersClient() {
       await systemUsersApi.updateUser(editUserId, {
         first_name: formData.firstName.trim(),
         last_name: formData.lastName.trim(),
-        email: formData.email.trim(),
-        id_number: formData.idNumber.trim(),
+        email: toNullableString(formData.email),
+        id_number: toNullableString(formData.idNumber),
+        id_country: toNullableString(formData.idCountry),
+        id_type: toNullableString(formData.idType),
+        active: editingUser?.authActive || false,
         is_admin: formData.isAdmin,
       });
 
@@ -204,16 +233,14 @@ export default function SystemUsersClient() {
 
       setEditUserId(null);
       clearSelection();
-      setAlertDialog({
-        isOpen: true,
+      addToast({
         title: 'User Updated',
         message: 'User details were updated successfully.',
         variant: 'success',
       });
     } catch (err) {
       console.error('Failed to update user:', err);
-      setAlertDialog({
-        isOpen: true,
+      addToast({
         title: 'Update Failed',
         message: 'Failed to update user details. Please try again.',
         variant: 'error',
@@ -251,67 +278,60 @@ export default function SystemUsersClient() {
     if (!confirmAction.action) return;
 
     setActionLoading(true);
-    const selectedIds = Array.from(selectedUserIds);
-    const selectedUsersWithLogin = selectedUsers.filter((u) => u.hasLoginUser && u.userId);
-    const userIdsForAuth = selectedUsersWithLogin.map((u) => u.userId!);
+    const selectedUsersWithLogin = selectedUsers.filter((u) => u.hasLoginUser);
+    const personIdsWithLogin = selectedUsersWithLogin.map((u) => u.personId);
 
     try {
       switch (confirmAction.action) {
         case 'deactivate':
-          await systemUsersApi.batchUpdateAuth(userIdsForAuth, false);
-          setAlertDialog({
-            isOpen: true,
+          await Promise.all(personIdsWithLogin.map((personId) => systemUsersApi.updateUserActive(personId, false)));
+          addToast({
             title: 'Users Deactivated',
-            message: `${userIdsForAuth.length} user(s) have been deactivated.`,
+            message: `${personIdsWithLogin.length} user(s) have been deactivated.`,
             variant: 'success',
           });
           break;
 
         case 'activate':
-          await systemUsersApi.batchUpdateAuth(userIdsForAuth, true);
-          setAlertDialog({
-            isOpen: true,
+          await Promise.all(personIdsWithLogin.map((personId) => systemUsersApi.updateUserActive(personId, true)));
+          addToast({
             title: 'Users Activated',
-            message: `${userIdsForAuth.length} user(s) have been activated.`,
+            message: `${personIdsWithLogin.length} user(s) have been activated.`,
             variant: 'success',
           });
           break;
 
         case 'reset-password':
-          await systemUsersApi.batchSendPasswordReset(userIdsForAuth);
-          setAlertDialog({
-            isOpen: true,
+          await Promise.all(personIdsWithLogin.map((personId) => systemUsersApi.sendPasswordReset(personId)));
+          addToast({
             title: 'Password Reset Sent',
-            message: `Password reset emails have been sent to ${userIdsForAuth.length} user(s).`,
+            message: `Password reset emails have been sent to ${personIdsWithLogin.length} user(s).`,
             variant: 'success',
           });
           break;
 
         case 'add-admin':
-          await systemUsersApi.batchUpdateAdmin(userIdsForAuth, true);
-          setAlertDialog({
-            isOpen: true,
+          await Promise.all(personIdsWithLogin.map((personId) => systemUsersApi.updateAdminStatus(personId, true)));
+          addToast({
             title: 'Admin Access Granted',
-            message: `${userIdsForAuth.length} user(s) have been granted admin access.`,
+            message: `${personIdsWithLogin.length} user(s) have been granted admin access.`,
             variant: 'success',
           });
           break;
 
         case 'remove-admin':
-          await systemUsersApi.batchUpdateAdmin(userIdsForAuth, false);
-          setAlertDialog({
-            isOpen: true,
+          await Promise.all(personIdsWithLogin.map((personId) => systemUsersApi.updateAdminStatus(personId, false)));
+          addToast({
             title: 'Admin Access Removed',
-            message: `Admin access has been removed from ${userIdsForAuth.length} user(s).`,
+            message: `Admin access has been removed from ${personIdsWithLogin.length} user(s).`,
             variant: 'success',
           });
           break;
 
         case 'schedule-deletion':
           const personIdsForDeletion = selectedUsers.map((u) => u.personId);
-          await systemUsersApi.batchScheduleForDeletion(personIdsForDeletion);
-          setAlertDialog({
-            isOpen: true,
+          await Promise.all(personIdsForDeletion.map((personId) => systemUsersApi.scheduleDeletion(personId)));
+          addToast({
             title: 'Deletion Scheduled',
             message: `${personIdsForDeletion.length} user account(s) have been scheduled for deletion. Notification emails have been sent.`,
             variant: 'success',
@@ -323,8 +343,7 @@ export default function SystemUsersClient() {
       await loadUsers(currentPage);
     } catch (err) {
       console.error('Action failed:', err);
-      setAlertDialog({
-        isOpen: true,
+      addToast({
         title: 'Action Failed',
         message: 'Failed to complete the action. Please try again.',
         variant: 'error',
@@ -572,8 +591,8 @@ export default function SystemUsersClient() {
                   <td className="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                     {row.firstName} {row.lastName}
                   </td>
-                  <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">{row.email}</td>
-                  <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">{row.idNumber}</td>
+                  <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">{row.email || '-'}</td>
+                  <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">{row.idNumber || '-'}</td>
                   <td className="px-4 py-4 text-sm">
                     <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${badgeClass(row.hasLoginUser)}`}>
                       {row.hasLoginUser ? 'Yes' : 'No'}
@@ -663,7 +682,7 @@ export default function SystemUsersClient() {
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
                 <input
-                  value={formData.email}
+                  value={formData.email ?? ''}
                   onChange={(event) => setFormData((current) => ({ ...current, email: event.target.value }))}
                   className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                 />
@@ -672,8 +691,26 @@ export default function SystemUsersClient() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ID Number</label>
                 <input
-                  value={formData.idNumber}
+                  value={formData.idNumber ?? ''}
                   onChange={(event) => setFormData((current) => ({ ...current, idNumber: event.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ID Country</label>
+                <input
+                  value={formData.idCountry ?? ''}
+                  onChange={(event) => setFormData((current) => ({ ...current, idCountry: event.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ID Type</label>
+                <input
+                  value={formData.idType ?? ''}
+                  onChange={(event) => setFormData((current) => ({ ...current, idType: event.target.value }))}
                   className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                 />
               </div>
@@ -720,13 +757,33 @@ export default function SystemUsersClient() {
         {...getConfirmDialogProps()}
       />
 
-      <AlertDialog
-        isOpen={alertDialog.isOpen}
-        onClose={() => setAlertDialog((current) => ({ ...current, isOpen: false }))}
-        title={alertDialog.title}
-        message={alertDialog.message}
-        variant={alertDialog.variant}
-      />
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+        {toasts.map((toastItem) => (
+          <div
+            key={toastItem.id}
+            className={`max-w-sm w-full px-4 py-3 rounded-lg shadow-lg border transition-opacity bg-white dark:bg-[#111217] border-gray-200 dark:border-gray-800 ${
+              toastItem.variant === 'success'
+                ? 'ring-2 ring-green-500 dark:ring-green-400'
+                : toastItem.variant === 'error'
+                ? 'ring-2 ring-red-500 dark:ring-red-400'
+                : 'ring-1 ring-gray-200 dark:ring-gray-700'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-1">
+                {toastItem.title && <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{toastItem.title}</div>}
+                <div className="text-sm text-gray-700 dark:text-gray-300">{toastItem.message}</div>
+              </div>
+              <button
+                onClick={() => setToasts((current) => current.filter((item) => item.id !== toastItem.id))}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </main>
   );
 }

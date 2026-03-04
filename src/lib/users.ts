@@ -2,10 +2,12 @@ import apiClient from './api';
 
 export interface SystemUser {
   person_id: string;
-  email: string;
+  email: string | null;
   first_name: string;
   last_name: string;
   id_number_masked: string | null;
+  id_country: string | null;
+  id_type: string | null;
   image_filename: string | null;
   has_login_user: boolean;
   user_id: string | null;
@@ -22,15 +24,14 @@ export interface UsersListResponse {
 }
 
 export interface UpdateUserPayload {
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  id_number?: string;
-  is_admin?: boolean;
-}
-
-export interface UpdateUserAuthPayload {
-  auth_active?: boolean;
+  first_name: string;
+  last_name: string;
+  email: string| null;
+  id_number: string | null;
+  id_country: string | null;
+  id_type: string | null;
+  active: boolean;
+  is_admin: boolean;
 }
 
 export const systemUsersApi = {
@@ -61,72 +62,34 @@ export const systemUsersApi = {
     return response.data;
   },
 
-  // Update user authentication status
-  updateUserAuth: async (userId: string, payload: UpdateUserAuthPayload): Promise<SystemUser> => {
+  // Activate/deactivate user
+  updateUserActive: async (personId: string, active: boolean): Promise<SystemUser> => {
     const response = await apiClient.patch<SystemUser>(
-      `/admin/users/${userId}/auth`,
-      payload
+      `/admin/users/${personId}/active`,
+      { active }
     );
     return response.data;
   },
 
-  // Toggle admin status
-  updateAdminStatus: async (userId: string, isAdmin: boolean): Promise<SystemUser> => {
+  // Promote/remove admin
+  updateAdminStatus: async (personId: string, isAdmin: boolean): Promise<SystemUser> => {
     const response = await apiClient.patch<SystemUser>(
-      `/admin/users/${userId}/admin`,
+      `/admin/users/${personId}/admin`,
       { is_admin: isAdmin }
     );
     return response.data;
   },
 
   // Send password reset email
-  sendPasswordReset: async (userId: string): Promise<{ message: string }> => {
-    const response = await apiClient.post<{ message: string }>(
-      `/admin/users/${userId}/reset-password`
+  sendPasswordReset: async (personId: string): Promise<void> => {
+    await apiClient.post(
+      `/admin/users/${personId}/reset-password`
     );
-    return response.data;
   },
 
-  // Batch operations
-  batchUpdateAuth: async (
-    userIds: string[],
-    authActive: boolean
-  ): Promise<{ updated: number; errors?: string[] }> => {
-    const response = await apiClient.post<{ updated: number; errors?: string[] }>(
-      '/admin/users/batch/auth',
-      { user_ids: userIds, auth_active: authActive }
+  scheduleDeletion: async (personId: string): Promise<void> => {
+    await apiClient.post(
+      `/admin/users/${personId}/schedule-deletion`
     );
-    return response.data;
-  },
-
-  batchUpdateAdmin: async (
-    userIds: string[],
-    isAdmin: boolean
-  ): Promise<{ updated: number; errors?: string[] }> => {
-    const response = await apiClient.post<{ updated: number; errors?: string[] }>(
-      '/admin/users/batch/admin',
-      { user_ids: userIds, is_admin: isAdmin }
-    );
-    return response.data;
-  },
-
-  batchSendPasswordReset: async (
-    userIds: string[]
-  ): Promise<{ sent: number; errors?: string[] }> => {
-    const response = await apiClient.post<{ sent: number; errors?: string[] }>(
-      '/admin/users/batch/reset-password',
-      { user_ids: userIds }
-    );
-    return response.data;
-  },
-
-  batchScheduleForDeletion: async (
-    personIds: string[]
-  ): Promise<{ scheduled: number; errors?: string[] }> => {
-    const response = await apiClient.post<{ scheduled: number; errors?: string[] }>(
-      '/admin/users/batch/schedule-deletion',
-      { person_ids: personIds }
-    );
-    return response.data;
   },
 };
