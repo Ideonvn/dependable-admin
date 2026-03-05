@@ -8,7 +8,7 @@ const parseEmailList = (value?: string): string[] => {
 };
 
 export const getSuperAdminEmails = (): string[] => {
-  const serverList = process.env.SUPER_ADMIN_EMAILS || 'ideon.vn@gmail.com';
+  const serverList = process.env.SUPER_ADMIN_EMAILS || 'ideon.vn@gmail.com,franco.vheerden@gmail.com';
   const publicList = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAILS;
 
   return parseEmailList(serverList || publicList);
