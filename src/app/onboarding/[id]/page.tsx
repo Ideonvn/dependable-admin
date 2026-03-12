@@ -182,6 +182,26 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
     setDeleteDialog({ isOpen: true, id });
   };
 
+  const handleResetStatus = async (recordId: string) => {
+    if (!onboarding) return;
+
+    try {
+      await schoolOnboardingApi.resetRecordStatus(onboarding.id, recordId);
+      addToast({
+        title: 'Status Reset',
+        message: 'The failed record has been reset and can now be retried.',
+        variant: 'success',
+      });
+      await loadOnboardingData(false);
+    } catch (error) {
+      addToast({
+        title: 'Reset Failed',
+        message: 'Could not reset record status. Please try again.',
+        variant: 'error',
+      });
+    }
+  };
+
   const confirmDelete = async () => {
     if (!onboarding || !deleteDialog.id) return;
 
@@ -470,6 +490,7 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
                 records={onboarding.records}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
+                onResetStatus={handleResetStatus}
                 initialEditingId={newRecordId}
                 schoolId={id}
               />

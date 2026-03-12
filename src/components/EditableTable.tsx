@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Edit2, Trash2, Check, X, ChevronDown, ChevronRight, AlertCircle, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Edit2, Trash2, Check, X, ChevronDown, ChevronRight, AlertCircle, Clock, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
 import { SchoolOnboardingRecord } from '@/lib/schoolOnboarding';
 import { onboardingApi, RecordDetails, RecordAction } from '@/lib/schools';
 
@@ -9,16 +9,18 @@ interface EditableTableProps {
   records: SchoolOnboardingRecord[];
   onUpdate: (id: string, updates: Partial<SchoolOnboardingRecord>) => void;
   onDelete: (id: string) => void;
+  onResetStatus: (id: string) => Promise<void>;
   initialEditingId?: string | null;
   schoolId: string;
 }
 
-export default function EditableTable({ records, onUpdate, onDelete, initialEditingId, schoolId }: EditableTableProps) {
+export default function EditableTable({ records, onUpdate, onDelete, onResetStatus, initialEditingId, schoolId }: EditableTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<SchoolOnboardingRecord>>({});
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [recordDetails, setRecordDetails] = useState<Map<string, RecordDetails>>(new Map());
   const [loadingActions, setLoadingActions] = useState<Set<string>>(new Set());
+  const [resettingRows, setResettingRows] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<keyof SchoolOnboardingRecord>('first_name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filters, setFilters] = useState({
@@ -147,6 +149,21 @@ export default function EditableTable({ records, onUpdate, onDelete, initialEdit
       onUpdate(editingId, editData);
       setEditingId(null);
       setEditData({});
+    }
+  };
+
+  const handleResetStatus = async (recordId: string) => {
+    setResettingRows((prev) => new Set(prev).add(recordId));
+    try {
+      await onResetStatus(recordId);
+    } catch (error) {
+      console.error('Failed to reset record status:', error);
+    } finally {
+      setResettingRows((prev) => {
+        const next = new Set(prev);
+        next.delete(recordId);
+        return next;
+      });
     }
   };
 
@@ -357,13 +374,28 @@ export default function EditableTable({ records, onUpdate, onDelete, initialEdit
                         <div className="flex justify-end gap-2">
                           {record.status !== 'submitted' && record.status !== 'created' ? (
                             <>
-                              <button
-                                onClick={() => startEdit(record)}
-                                className="text-[#1A1A6D] dark:text-[#20B2AA] hover:opacity-80"
-                                title="Edit"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
+                              {record.status === 'error' ? (
+                                <button
+                                  onClick={() => handleResetStatus(record.id)}
+                                  disabled={resettingRows.has(record.id)}
+                                  className="text-amber-600 dark:text-amber-400 hover:opacity-80 disabled:opacity-50"
+                                  title="Reset status"
+                                >
+                                  {resettingRows.has(record.id) ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="w-4 h-4" />
+                                  )}
+                                </button>
+                              ) : record.status === 'validated' ? null : (
+                                <button
+                                  onClick={() => startEdit(record)}
+                                  className="text-[#1A1A6D] dark:text-[#20B2AA] hover:opacity-80"
+                                  title="Edit"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                              )}
                               <button
                                 onClick={() => onDelete(record.id)}
                                 className="text-red-600 dark:text-red-400 hover:opacity-80"

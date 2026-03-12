@@ -175,6 +175,14 @@ export const schoolOnboardingApi = {
     return response.data as OperationResult;
   },
 
+  // Reset a failed record back to its last known status so it can be retried
+  resetRecordStatus: async (onboardingId: string, recordId: string): Promise<void> => {
+    await apiClient.post(
+      `/admin/onboarding/schools/${onboardingId}/records/${recordId}/reset-status`,
+      {}
+    );
+  },
+
   // Create classes in core system
   createClasses: async (
     onboardingId: string,
