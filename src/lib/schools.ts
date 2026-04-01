@@ -98,6 +98,12 @@ export interface StudentDetails {
   image_filename: string | null;
 }
 
+export interface StudentUpdatePayload {
+  external_ref?: string | null;
+  admitted_on?: string | null;
+  status?: 'active' | 'left' | 'graduated';
+}
+
 export interface StudentContact {
   id: string;
   student_id: string;
@@ -327,6 +333,23 @@ export const schoolsApi = {
       return response.data;
     } catch (error) {
       console.error('Error updating dependant:', error);
+      throw error;
+    }
+  },
+
+  updateStudent: async (
+    schoolId: string,
+    studentId: string,
+    data: StudentUpdatePayload
+  ): Promise<{ message: string }> => {
+    try {
+      const response = await apiClient.put<{ message: string }>(
+        `/schools/${schoolId}/students/${studentId}`,
+        data
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error updating student:', error);
       throw error;
     }
   },

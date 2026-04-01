@@ -326,14 +326,21 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
       if (!dependantId) {
         throw new Error('Dependant ID not available');
       }
-      await schoolsApi.updateDependant(dependantId, {
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        date_of_birth: dob,
-        gender,
-        weight_at_birth: weightAtBirth ? parseFloat(weightAtBirth) : null,
-        length_at_birth: lengthAtBirth ? parseFloat(lengthAtBirth) : null,
-      });
+      await Promise.all([
+        schoolsApi.updateDependant(dependantId, {
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          date_of_birth: dob,
+          gender,
+          weight_at_birth: weightAtBirth ? parseFloat(weightAtBirth) : null,
+          length_at_birth: lengthAtBirth ? parseFloat(lengthAtBirth) : null,
+        }),
+        schoolsApi.updateStudent(schoolId, studentId, {
+          external_ref: externalRef.trim() || null,
+          admitted_on: admittedOn || null,
+          status: studentStatus,
+        }),
+      ]);
       if (imageFile) {
         await schoolsApi.uploadStudentImage(dependantId, imageFile);
       }
