@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Receipt, Download, Plus, Calendar, DollarSign, AlertCircle, FileText, Settings, Save, X, MapPin, Mail, Phone, ChevronDown } from 'lucide-react';
 import { billingApi, Invoice, BillingConfig, BillingDetails, SchoolPlan } from '@/lib/billing';
+import { userSetupService } from '@/lib/userSetupService';
 
 interface BillingTabProps {
   schoolId: string;
@@ -17,6 +18,7 @@ interface StatusModalState {
 type BillingTabType = 'invoices' | 'configuration' | 'details' | 'plan';
 
 export default function BillingTab({ schoolId }: BillingTabProps) {
+  const isSuperAdmin = userSetupService.isAdmin();
   const [activeTab, setActiveTab] = useState<BillingTabType>('invoices');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [config, setConfig] = useState<BillingConfig | null>(null);
@@ -90,9 +92,11 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
 
   useEffect(() => {
     loadInvoices();
-    loadBillingConfig();
     loadBillingDetails();
-    loadSchoolPlan();
+    if (isSuperAdmin) {
+      loadBillingConfig();
+      loadSchoolPlan();
+    }
   }, [schoolId]);
 
   const loadBillingConfig = async () => {
@@ -355,12 +359,12 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
         <div className="flex gap-2 border-b border-gray-200 dark:border-gray-800">
           {(
             [
-              { id: 'invoices', label: 'Invoices', icon: Receipt },
-              { id: 'configuration', label: 'Configuration', icon: Settings },
-              { id: 'details', label: 'Billing Details', icon: MapPin },
-              { id: 'plan', label: 'Billing Plan', icon: Calendar },
+              { id: 'invoices', label: 'Invoices', icon: Receipt, adminOnly: false },
+              { id: 'configuration', label: 'Configuration', icon: Settings, adminOnly: true },
+              { id: 'details', label: 'Billing Details', icon: MapPin, adminOnly: false },
+              { id: 'plan', label: 'Billing Plan', icon: Calendar, adminOnly: true },
             ] as const
-          ).map(({ id, label, icon: Icon }) => (
+          ).filter(({ adminOnly }) => !adminOnly || isSuperAdmin).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
@@ -382,15 +386,17 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
       {/* Tab Content - Invoices */}
       {activeTab === 'invoices' && (
         <>
-          <div className="mb-6 flex justify-end">
-            <button
-              onClick={() => setShowGenerateForm(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity"
-            >
-              <Plus className="w-4 h-4" />
-              Generate Invoice
-            </button>
-          </div>
+          {isSuperAdmin && (
+            <div className="mb-6 flex justify-end">
+              <button
+                onClick={() => setShowGenerateForm(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <Plus className="w-4 h-4" />
+                Generate Invoice
+              </button>
+            </div>
+          )}
 
           {invoices.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg">
@@ -457,19 +463,25 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex justify-center">
-                          <button
-                            onClick={() => setStatusModal({ isOpen: true, invoiceId: invoice.id, invoiceNumber: invoice.invoice_number })}
-                            disabled={updatingStatus === invoice.id}
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)} hover:opacity-80 transition-opacity disabled:opacity-50 cursor-pointer`}
-                          >
-                            {updatingStatus === invoice.id ? (
-                              <span className="flex items-center gap-1">
-                                <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                              </span>
-                            ) : (
-                              invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)
-                            )}
-                          </button>
+                          {isSuperAdmin ? (
+                            <button
+                              onClick={() => setStatusModal({ isOpen: true, invoiceId: invoice.id, invoiceNumber: invoice.invoice_number })}
+                              disabled={updatingStatus === invoice.id}
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)} hover:opacity-80 transition-opacity disabled:opacity-50 cursor-pointer`}
+                            >
+                              {updatingStatus === invoice.id ? (
+                                <span className="flex items-center gap-1">
+                                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                </span>
+                              ) : (
+                                invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)
+                              )}
+                            </button>
+                          ) : (
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
+                              {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="py-4 px-4">

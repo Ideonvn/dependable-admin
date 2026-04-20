@@ -19,16 +19,23 @@ export const setGoogleIdToken = (token: string | null) => {
 // Add Bearer token to all requests (with automatic refresh)
 apiClient.interceptors.request.use(
   async (config) => {
-    // Get valid token (will refresh if expired)
-    const accessToken = await tokenService.getValidToken(currentGoogleIdToken || undefined);
-    
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    } else {
-      // No valid token available - requests will likely fail with 401
-      console.warn('No valid access token available for API request');
+    try {
+      const accessToken = await tokenService.getValidToken(currentGoogleIdToken || undefined);
+
+      if (accessToken) {
+        config.headers.Authorization = `Bearer ${accessToken}`;
+      } else {
+        console.warn('No valid access token available for API request');
+      }
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message === 'REFRESH_TOKEN_EXPIRED') {
+        console.error('Refresh token expired, redirecting to sign-in');
+        if (typeof window !== 'undefined') {
+          window.location.href = '/api/auth/signout?callbackUrl=/auth/signin';
+        }
+      }
     }
-    
+
     return config;
   },
   (error) => Promise.reject(error)

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { schoolsApi, StudentDetails, StudentContact, StudentEnrollment, AttendanceCalendarMonth } from '@/lib/schools';
-import { AlertCircle, CheckCircle2, Image as ImageIcon, Loader2, Save, Upload, Users, GraduationCap, Contact, ChevronDown, ChevronRight, Check, X, Plus, Calendar, ChevronLeft } from 'lucide-react';
+import { schoolsApi, StudentDetails, StudentContact, StudentEnrollment, AttendanceCalendarMonth, AttendanceBodyCheck } from '@/lib/schools';
+import { AlertCircle, Image as ImageIcon, Loader2, Save, Upload, Users, GraduationCap, Contact, ChevronDown, ChevronRight, Check, X, Plus, Calendar, ChevronLeft } from 'lucide-react';
 import ClassroomProfileImage from '../ClassroomProfileImage';
 import ContactProfileImage from '../ContactProfileImage';
 import StudentProfileImage from '../StudentProfileImage';
@@ -61,6 +61,8 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
   const today = new Date();
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth() + 1);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [selectedBodyCheck, setSelectedBodyCheck] = useState<AttendanceBodyCheck | null>(null);
 
   const [contactFormData, setContactFormData] = useState({
     first_name: '',
@@ -107,9 +109,9 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
     }, 4000);
   };
 
-  // Update hash when tab changes
+  // Update hash when tab changes without pushing a new history entry
   useEffect(() => {
-    window.location.hash = activeTab;
+    history.replaceState(null, '', `#${activeTab}`);
   }, [activeTab]);
 
   useEffect(() => {
@@ -469,7 +471,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Gender</label>
-                <select value={gender} onChange={(e) => setGender(e.target.value as any)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                <select value={gender} onChange={(e) => setGender(e.target.value as 'MALE' | 'FEMALE' | 'OTHER')} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
                   <option value="FEMALE">Female</option>
                   <option value="MALE">Male</option>
                   <option value="OTHER">Other</option>
@@ -784,178 +786,241 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
               ) : (
                 <div className="space-y-4">
                   {/* Month Navigation */}
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center justify-between">
                     <button
                       onClick={() => {
-                        if (currentMonth === 1) {
-                          setCurrentMonth(12);
-                          setCurrentYear(currentYear - 1);
-                        } else {
-                          setCurrentMonth(currentMonth - 1);
-                        }
+                        setSelectedDay(null);
+                        if (currentMonth === 1) { setCurrentMonth(12); setCurrentYear(currentYear - 1); }
+                        else { setCurrentMonth(currentMonth - 1); }
                       }}
                       className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                      title="Previous month"
                     >
                       <ChevronLeft className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                     </button>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      {new Date(currentYear, currentMonth - 1).toLocaleDateString('en-US', {
-                        month: 'long',
-                        year: 'numeric',
-                      })}
+                      {new Date(currentYear, currentMonth - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                     </h3>
                     <button
                       onClick={() => {
-                        if (currentMonth === 12) {
-                          setCurrentMonth(1);
-                          setCurrentYear(currentYear + 1);
-                        } else {
-                          setCurrentMonth(currentMonth + 1);
-                        }
+                        setSelectedDay(null);
+                        if (currentMonth === 12) { setCurrentMonth(1); setCurrentYear(currentYear + 1); }
+                        else { setCurrentMonth(currentMonth + 1); }
                       }}
                       className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                      title="Next month"
                     >
-                      <ChevronLeft className="w-5 h-5 text-gray-700 dark:text-gray-300 transform rotate-180" />
+                      <ChevronLeft className="w-5 h-5 text-gray-700 dark:text-gray-300 rotate-180" />
                     </button>
                   </div>
 
-                  {/* Calendar Grid */}
-                  <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    {/* Day headers */}
-                    <div className="grid grid-cols-7 gap-0 bg-gray-50 dark:bg-gray-700/50">
-                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                        <div
-                          key={day}
-                          className="p-3 text-center font-semibold text-sm text-gray-700 dark:text-gray-300 border-r border-b border-gray-200 dark:border-gray-700 last:border-r-0"
-                        >
-                          {day}
+                  {/* Calendar Grid — Monday first */}
+                  <div className="select-none">
+                    <div className="grid grid-cols-7 mb-1">
+                      {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+                        <div key={i} className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400 py-1">
+                          {d}
                         </div>
                       ))}
                     </div>
-
-                    {/* Calendar days */}
-                    <div className="grid grid-cols-7 gap-0">
+                    <div className="grid grid-cols-7 gap-y-1">
                       {(() => {
-                        const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
+                        // Monday-first offset: Mon=0 … Sun=6
+                        const rawFirst = new Date(currentYear, currentMonth - 1, 1).getDay();
+                        const offset = (rawFirst + 6) % 7;
                         const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
-                        const calendarDays: (number | null)[] = Array(firstDay).fill(null);
+                        const cells: (number | null)[] = [...Array(offset).fill(null)];
+                        for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-                        for (let i = 1; i <= daysInMonth; i++) {
-                          calendarDays.push(i);
-                        }
+                        const eventsByDay: Record<number, typeof attendanceCalendar extends null ? never : NonNullable<typeof attendanceCalendar>['events'][number]> = {};
+                        attendanceCalendar?.events.forEach(e => { eventsByDay[e.day] = e; });
 
-                        const eventsByDay: Record<number, any> = {};
-                        if (attendanceCalendar?.events) {
-                          attendanceCalendar.events.forEach((day) => {
-                            eventsByDay[day.day] = day;
-                          });
-                        }
-
-                        return calendarDays.map((day, idx) => {
-                          const dayEvents = day ? eventsByDay[day] : null;
-                          const hasCheckIn = dayEvents?.attendances?.some(
-                            (e: any) => e.event_type === 'check_in'
-                          );
-                          const hasCheckOut = dayEvents?.attendances?.some(
-                            (e: any) => e.event_type === 'check_out'
-                          );
-                          const hasBodyCheck =
-                            dayEvents?.body_checks && dayEvents.body_checks.length > 0;
-
+                        return cells.map((day, idx) => {
+                          if (day === null) return <div key={idx} />;
+                          const ev = eventsByDay[day];
+                          const hasActivity = ev && (ev.attendances.length > 0 || ev.body_checks.length > 0);
+                          const isSelected = selectedDay === day;
                           return (
-                            <div
+                            <button
                               key={idx}
-                              className={`min-h-24 p-2 border-r border-b border-gray-200 dark:border-gray-700 last:border-r-0 ${
-                                day === null ? 'bg-gray-50 dark:bg-gray-800/50' : 'hover:bg-gray-50 dark:hover:bg-gray-800/30'
+                              onClick={() => setSelectedDay(isSelected ? null : day)}
+                              className={`flex flex-col items-center justify-start pt-1 pb-2 rounded-xl transition-colors ${
+                                isSelected
+                                  ? 'bg-[#1A1A6D] dark:bg-[#20B2AA]'
+                                  : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                               }`}
                             >
-                              {day && (
-                                <div className="space-y-1">
-                                  <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                                    {day}
-                                  </div>
-
-                                  {/* Event indicators */}
-                                  <div className="space-y-1 text-xs">
-                                    {hasCheckIn && (
-                                      <div className="inline-block px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded text-nowrap">
-                                        ✓ Check In
-                                      </div>
-                                    )}
-                                    {hasCheckOut && (
-                                      <div className="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-nowrap">
-                                        ✓ Check Out
-                                      </div>
-                                    )}
-                                    {hasBodyCheck && (
-                                      <div className="inline-block px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded text-nowrap">
-                                        🔍 Body Check
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  {/* Attendance details (on hover/expand) */}
-                                  {dayEvents && (dayEvents.attendances?.length > 0 || dayEvents.body_checks?.length > 0) && (
-                                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 space-y-1 text-xs">
-                                      {dayEvents.attendances?.map((event: any, i: number) => (
-                                        <div key={`att-${i}`} className="text-gray-600 dark:text-gray-400">
-                                          <span className="font-medium">
-                                            {event.event_type === 'check_in' ? '→' : '←'}
-                                          </span>{' '}
-                                          {new Date(event.occurred_at).toLocaleTimeString('en-US', {
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                          })}{' '}
-                                          by {event.performed_by}
-                                        </div>
-                                      ))}
-                                      {dayEvents.body_checks?.map((check: any, i: number) => (
-                                        <div key={`bc-${i}`} className="text-gray-600 dark:text-gray-400">
-                                          <span className="font-medium">🔍</span> Body check by{' '}
-                                          {check.performed_by}
-                                          {check.front?.length > 0 || check.back?.length > 0 ? (
-                                            <span className="block ml-4">
-                                              Markers:{' '}
-                                              {[...((check.front as any[]) || []), ...((check.back as any[]) || [])]
-                                                .map((m: any) => m.marker_name)
-                                                .join(', ')}
-                                            </span>
-                                          ) : null}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
+                              <span className={`text-sm font-medium leading-6 ${
+                                isSelected ? 'text-white' : 'text-gray-900 dark:text-gray-100'
+                              }`}>
+                                {day}
+                              </span>
+                              {hasActivity ? (
+                                <span className={`w-1.5 h-1.5 rounded-full mt-0.5 ${
+                                  isSelected ? 'bg-white' : 'bg-green-500'
+                                }`} />
+                              ) : (
+                                <span className="w-1.5 h-1.5 mt-0.5" />
                               )}
-                            </div>
+                            </button>
                           );
                         });
                       })()}
                     </div>
                   </div>
 
-                  {/* Legend */}
-                  <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400 mt-4">
-                    <div className="flex items-center gap-2">
-                      <div className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
-                        ✓ Check In
+                  {/* Day event cards */}
+                  {selectedDay && (() => {
+                    const ev = attendanceCalendar?.events.find(e => e.day === selectedDay);
+                    const allEvents = [
+                      ...(ev?.attendances ?? []).map(a => ({ type: 'attendance' as const, data: a })),
+                      ...(ev?.body_checks ?? []).map(b => ({ type: 'bodycheck' as const, data: b })),
+                    ].sort((a, b) => {
+                      const tA = a.type === 'attendance' ? a.data.occurred_at : a.data.checked_at;
+                      const tB = b.type === 'attendance' ? b.data.occurred_at : b.data.checked_at;
+                      return new Date(tA).getTime() - new Date(tB).getTime();
+                    });
+
+                    if (allEvents.length === 0) {
+                      return (
+                        <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
+                          No activity recorded for this day.
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-3">
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                          {new Date(currentYear, currentMonth - 1, selectedDay).toLocaleDateString('en-US', {
+                            weekday: 'long', day: 'numeric', month: 'long',
+                          })}
+                        </p>
+                        {allEvents.map((item, i) => {
+                          if (item.type === 'attendance') {
+                            const a = item.data;
+                            const isIn = a.event_type === 'check_in';
+                            const time = new Date(a.occurred_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+                            return (
+                              <div key={i} className="flex gap-4 bg-[#1A1A6D] dark:bg-[#1e2a4a] rounded-xl px-5 py-4 text-white">
+                                <div className="flex-shrink-0 min-w-[80px]">
+                                  <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{isIn ? 'Check in' : 'Check out'}</p>
+                                  <p className="text-lg font-bold mt-0.5">{time}</p>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-sm">{details?.full_name}</p>
+                                  {a.handed_over_by && (
+                                    <p className="text-xs opacity-80 mt-0.5">Handed over by {a.handed_over_by}</p>
+                                  )}
+                                  {a.notes && (
+                                    <p className="text-xs opacity-70 mt-1 italic">{a.notes}</p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            const b = item.data;
+                            const time = new Date(b.checked_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+                            const markerCount = b.front.length + b.back.length;
+                            return (
+                              <button
+                                key={i}
+                                onClick={() => setSelectedBodyCheck(b)}
+                                className="w-full flex gap-4 bg-[#1A1A6D] dark:bg-[#1e2a4a] rounded-xl px-5 py-4 text-white text-left hover:opacity-90 transition-opacity"
+                              >
+                                <div className="flex-shrink-0 min-w-[80px]">
+                                  <p className="text-xs font-semibold uppercase tracking-wide opacity-70">Body Check</p>
+                                  <p className="text-lg font-bold mt-0.5">{time}</p>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-sm">By {b.performed_by}</p>
+                                  {markerCount > 0 && (
+                                    <p className="text-xs opacity-80 mt-0.5">{markerCount} note{markerCount !== 1 ? 's' : ''}</p>
+                                  )}
+                                  <p className="text-xs opacity-60 mt-1">Tap to view</p>
+                                </div>
+                              </button>
+                            );
+                          }
+                        })}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
-                        ✓ Check Out
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded">
-                        🔍 Body Check
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Body Check Modal */}
+          {selectedBodyCheck && (
+            <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-[#121212] rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 pt-5 pb-3">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Body Check</h3>
+                  <button
+                    onClick={() => setSelectedBodyCheck(null)}
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                  </button>
+                </div>
+
+                <div className="px-6 pb-6 space-y-5">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    By {selectedBodyCheck.performed_by} ·{' '}
+                    {new Date(selectedBodyCheck.checked_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                  </p>
+
+                  {/* Front + Back images with markers */}
+                  <div className="grid grid-cols-2 gap-6">
+                    {(['front', 'back'] as const).map((side) => {
+                      const markers = selectedBodyCheck[side];
+                      const imgSrc = side === 'front'
+                        ? '/assets/images/body-check/baby-front.png'
+                        : '/assets/images/body-check/baby-back.png';
+                      return (
+                        <div key={side} className="flex flex-col items-center gap-3">
+                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                            {side}
+                          </p>
+                          {/* Image with overlaid marker dots — wrapper is exactly image size */}
+                          <div className="relative inline-block">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={imgSrc}
+                              alt={side}
+                              className="block w-40 object-contain"
+                            />
+                            {/* Marker dots at normalized (x,y) % positions */}
+                            {markers.map((m, i) => (
+                              <div
+                                key={i}
+                                title={m.note || undefined}
+                                className="absolute -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white border-2 border-[#1A1A6D] dark:border-[#20B2AA] flex items-center justify-center z-10 cursor-default"
+                                style={{ left: `${m.x_marker * 100}%`, top: `${m.y_marker * 100}%` }}
+                              >
+                                <div className="w-2 h-2 rounded-full bg-[#1A1A6D] dark:bg-[#20B2AA]" />
+                              </div>
+                            ))}
+                          </div>
+                          {/* Notes list */}
+                          {markers.length > 0 ? (
+                            <div className="w-full space-y-1">
+                              {markers.map((m, i) => (
+                                <div key={i} className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs text-gray-800 dark:text-gray-200">
+                                  <span className="font-semibold text-[#1A1A6D] dark:text-[#20B2AA]">#{i + 1}</span>
+                                  {m.note ? ` — ${m.note}` : ' — no note'}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-gray-400 dark:text-gray-600 text-center">No markers</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -159,9 +159,12 @@ export interface AttendanceEvent {
 
 export interface BodyCheckMarker {
   id: string;
-  marker_name: string;
-  marker_type: string;
-  severity: string;
+  x_marker: number; // normalized 0..1
+  y_marker: number; // normalized 0..1
+  note: string;
+  marker_name?: string;
+  marker_type?: string;
+  severity?: string;
 }
 
 export interface AttendanceBodyCheck {

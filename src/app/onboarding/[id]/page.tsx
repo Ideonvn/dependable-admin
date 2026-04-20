@@ -15,10 +15,17 @@ import ClassSummaryTable from '@/components/ClassSummaryTable';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import AlertDialog from '@/components/AlertDialog';
 import SchoolProfileImage from '@/components/SchoolProfileImage';
+import { userSetupService } from '@/lib/userSetupService';
 
 export default function OnboardingEdit({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+
+  useEffect(() => {
+    if (!userSetupService.isAdmin()) {
+      router.replace('/');
+    }
+  }, [router]);
   const [school, setSchool] = useState<SchoolWithStats | null>(null);
   const [onboarding, setOnboarding] = useState<SchoolOnboarding | null>(null);
   const [classes, setClasses] = useState<ClassSummary[]>([]);
