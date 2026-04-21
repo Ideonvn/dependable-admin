@@ -5,12 +5,10 @@ import { useRouter } from 'next/navigation';
 import { RefreshCw, Building2, ClipboardList, Users } from 'lucide-react';
 import { schoolsApi, School } from '@/lib/schools';
 import SchoolCardMain from '@/components/SchoolCardMain';
+import { userSetupService } from '@/lib/userSetupService';
 
-interface DashboardClientProps {
-  isSuperAdmin?: boolean;
-}
-
-export default function DashboardClient({ isSuperAdmin = false }: DashboardClientProps) {
+export default function DashboardClient() {
+  const isSuperAdmin = userSetupService.isAdmin();
   const router = useRouter();
   const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,13 +60,15 @@ export default function DashboardClient({ isSuperAdmin = false }: DashboardClien
             </button>
           )}
           
-          <button
-            onClick={() => router.push('/onboarding')}
-            className="flex items-center gap-2 px-6 py-3 bg-gray-700 dark:bg-gray-600 text-white rounded-lg hover:opacity-90 transition-all shadow-lg hover:shadow-xl font-medium"
-          >
-            <ClipboardList className="w-5 h-5" />
-            Onboarding
-          </button>
+          {isSuperAdmin && (
+            <button
+              onClick={() => router.push('/onboarding')}
+              className="flex items-center gap-2 px-6 py-3 bg-gray-700 dark:bg-gray-600 text-white rounded-lg hover:opacity-90 transition-all shadow-lg hover:shadow-xl font-medium"
+            >
+              <ClipboardList className="w-5 h-5" />
+              Onboarding
+            </button>
+          )}
         </div>
       </div>
 

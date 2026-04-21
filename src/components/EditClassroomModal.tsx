@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, AlertCircle, Upload, Trash2, Plus } from 'lucide-react';
 import { schoolsApi, Classroom, Membership, ClassroomTeacherAssignment } from '@/lib/schools';
+import ClassroomProfileImage from '@/components/ClassroomProfileImage';
 
 interface EditClassroomModalProps {
   isOpen: boolean;
@@ -229,14 +230,15 @@ export default function EditClassroomModal({
                   <div className="w-32 h-32 rounded-lg bg-gradient-to-br from-[#1A1A6D] to-[#87CEFA] dark:from-[#20B2AA] dark:to-[#4682B4] flex items-center justify-center text-white flex-shrink-0 overflow-hidden">
                     {imagePreview ? (
                       <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                    ) : classroom.image_filename ? (
-                      <img
-                        src={`${process.env.NEXT_PUBLIC_API_URL}/files/${classroom.image_filename}`}
+                    ) : (
+                      <ClassroomProfileImage
+                        schoolId={schoolId}
+                        classroomId={classroom.id}
+                        imageFilename={classroom.image_filename}
                         alt={classroom.name}
                         className="w-full h-full object-cover"
+                        fallbackClassName="w-full h-full flex items-center justify-center"
                       />
-                    ) : (
-                      <span className="text-3xl">📚</span>
                     )}
                   </div>
 

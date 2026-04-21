@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { RefreshCw, GraduationCap, Building2, ArrowLeft } from 'lucide-react';
 import { onboardingApi, SchoolWithStats } from '@/lib/schools';
 import SchoolCard from '@/components/SchoolCard';
+import { userSetupService } from '@/lib/userSetupService';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -12,6 +13,10 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!userSetupService.isAdmin()) {
+      router.replace('/');
+      return;
+    }
     loadSchools();
   }, []);
 

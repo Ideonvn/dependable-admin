@@ -1,12 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Upload, Building2, Image as ImageIcon } from 'lucide-react';
 import { schoolOnboardingApi } from '@/lib/schoolOnboarding';
+import { userSetupService } from '@/lib/userSetupService';
 
 export default function SchoolOnboardingCreate() {
   const router = useRouter();
+
+  useEffect(() => {
+    if (!userSetupService.isAdmin()) {
+      router.replace('/');
+    }
+  }, [router]);
   const [schoolName, setSchoolName] = useState('');
   const [schoolPicture, setSchoolPicture] = useState<File | null>(null);
   const [csvFile, setCsvFile] = useState<File | null>(null);

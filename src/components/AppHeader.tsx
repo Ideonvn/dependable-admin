@@ -1,18 +1,13 @@
 'use client';
 
-import { User } from 'next-auth';
 import SettingsMenu from '@/components/SettingsMenu';
 import { Building2 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
-interface AppHeaderProps {
-  user: User;
-}
-
-export default function AppHeader({ user }: AppHeaderProps) {
+export default function AppHeader() {
   const pathname = usePathname();
-  
+
   // Don't show header on auth pages
   if (pathname?.startsWith('/auth')) {
     return null;
@@ -29,7 +24,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
               <p className="text-gray-600 dark:text-gray-400 mt-1">Manage schools and student data</p>
             </div>
           </Link>
-          <SettingsMenu user={user} />
+          <SettingsMenu />
         </div>
       </div>
     </header>
