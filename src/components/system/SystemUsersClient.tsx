@@ -588,7 +588,14 @@ export default function SystemUsersClient() {
                       className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-[#1A1A6D] dark:text-[#20B2AA] focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA]"
                     />
                   </td>
-                  <td className="px-4 py-4 text-xs text-gray-600 dark:text-gray-400">{row.personId}</td>
+                  <td className="px-4 py-4 text-xs">
+                    <Link
+                      href={`/system/users/${row.personId}`}
+                      className="text-[#1A1A6D] dark:text-[#20B2AA] hover:underline font-mono"
+                    >
+                      {row.personId}
+                    </Link>
+                  </td>
                   <td className="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                     {row.firstName} {row.lastName}
                   </td>

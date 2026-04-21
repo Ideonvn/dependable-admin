@@ -812,53 +812,94 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                     </button>
                   </div>
 
-                  {/* Calendar Grid — Monday first */}
-                  <div className="select-none">
-                    <div className="grid grid-cols-7 mb-1">
-                      {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-                        <div key={i} className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400 py-1">
+                  {/* Calendar Grid — Monday first, Google Calendar-style */}
+                  <div className="select-none border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                    {/* Day headers */}
+                    <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d, i) => (
+                        <div key={i} className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400 py-2">
                           {d}
                         </div>
                       ))}
                     </div>
-                    <div className="grid grid-cols-7 gap-y-1">
+                    {/* Day cells */}
+                    <div className="grid grid-cols-7 divide-x divide-y divide-gray-200 dark:divide-gray-700">
                       {(() => {
-                        // Monday-first offset: Mon=0 … Sun=6
+                        const today = new Date();
                         const rawFirst = new Date(currentYear, currentMonth - 1, 1).getDay();
                         const offset = (rawFirst + 6) % 7;
                         const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
                         const cells: (number | null)[] = [...Array(offset).fill(null)];
                         for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+                        // Pad to complete last row
+                        while (cells.length % 7 !== 0) cells.push(null);
 
-                        const eventsByDay: Record<number, typeof attendanceCalendar extends null ? never : NonNullable<typeof attendanceCalendar>['events'][number]> = {};
+                        const eventsByDay: Record<number, NonNullable<typeof attendanceCalendar>['events'][number]> = {};
                         attendanceCalendar?.events.forEach(e => { eventsByDay[e.day] = e; });
 
                         return cells.map((day, idx) => {
-                          if (day === null) return <div key={idx} />;
-                          const ev = eventsByDay[day];
-                          const hasActivity = ev && (ev.attendances.length > 0 || ev.body_checks.length > 0);
+                          const isToday = day !== null &&
+                            today.getFullYear() === currentYear &&
+                            today.getMonth() + 1 === currentMonth &&
+                            today.getDate() === day;
                           const isSelected = selectedDay === day;
+                          const ev = day !== null ? eventsByDay[day] : undefined;
+                          const attendances = ev?.attendances ?? [];
+                          const bodyChecks = ev?.body_checks ?? [];
+
+                          // Sort all events by time for display
+                          const allItems = [
+                            ...attendances.map(a => ({
+                              time: new Date(a.occurred_at),
+                              label: a.event_type === 'check_in' ? 'Check in' : 'Check out',
+                              color: a.event_type === 'check_in'
+                                ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                                : 'bg-orange-500/20 text-orange-700 dark:text-orange-300',
+                            })),
+                            ...bodyChecks.map(b => ({
+                              time: new Date(b.checked_at),
+                              label: 'Body check',
+                              color: 'bg-[#1A1A6D]/10 text-[#1A1A6D] dark:bg-[#20B2AA]/10 dark:text-[#20B2AA]',
+                            })),
+                          ].sort((a, b) => a.time.getTime() - b.time.getTime());
+
+                          const MAX_VISIBLE = 3;
+                          const visible = allItems.slice(0, MAX_VISIBLE);
+                          const overflow = allItems.length - MAX_VISIBLE;
+
                           return (
                             <button
                               key={idx}
-                              onClick={() => setSelectedDay(isSelected ? null : day)}
-                              className={`flex flex-col items-center justify-start pt-1 pb-2 rounded-xl transition-colors ${
-                                isSelected
-                                  ? 'bg-[#1A1A6D] dark:bg-[#20B2AA]'
-                                  : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                              onClick={() => day !== null ? setSelectedDay(isSelected ? null : day) : undefined}
+                              disabled={day === null}
+                              className={`min-h-[90px] p-1.5 flex flex-col gap-1 text-left transition-colors align-top ${
+                                day === null
+                                  ? 'bg-gray-50 dark:bg-gray-900/30 cursor-default'
+                                  : isSelected
+                                  ? 'bg-[#1A1A6D]/5 dark:bg-[#20B2AA]/10 ring-2 ring-inset ring-[#1A1A6D] dark:ring-[#20B2AA]'
+                                  : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
                               }`}
                             >
-                              <span className={`text-sm font-medium leading-6 ${
-                                isSelected ? 'text-white' : 'text-gray-900 dark:text-gray-100'
-                              }`}>
-                                {day}
-                              </span>
-                              {hasActivity ? (
-                                <span className={`w-1.5 h-1.5 rounded-full mt-0.5 ${
-                                  isSelected ? 'bg-white' : 'bg-green-500'
-                                }`} />
-                              ) : (
-                                <span className="w-1.5 h-1.5 mt-0.5" />
+                              {day !== null && (
+                                <>
+                                  <span className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full flex-shrink-0 ${
+                                    isToday
+                                      ? 'bg-[#1A1A6D] dark:bg-[#20B2AA] text-white'
+                                      : 'text-gray-700 dark:text-gray-300'
+                                  }`}>
+                                    {day}
+                                  </span>
+                                  {visible.map((item, i) => (
+                                    <span key={i} className={`w-full truncate text-[10px] font-medium px-1.5 py-0.5 rounded ${item.color}`}>
+                                      {item.time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })} {item.label}
+                                    </span>
+                                  ))}
+                                  {overflow > 0 && (
+                                    <span className="text-[10px] text-gray-400 dark:text-gray-500 px-1.5">
+                                      +{overflow} more
+                                    </span>
+                                  )}
+                                </>
                               )}
                             </button>
                           );

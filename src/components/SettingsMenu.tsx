@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { Settings, LogOut } from 'lucide-react';
+import { Settings, LogOut, User } from 'lucide-react';
 import { tokenService } from '../lib/tokenService';
 import { setGoogleIdToken } from '../lib/api';
 import { userSetupService } from '../lib/userSetupService';
@@ -11,6 +12,7 @@ import UserProfileImage from './UserProfileImage';
 export default function SettingsMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const setupData = userSetupService.getSetupData();
   const displayName = userSetupService.getFullName() ?? setupData?.email ?? '';
@@ -73,6 +75,17 @@ export default function SettingsMenu() {
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{displayName}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{displayEmail}</p>
+          </div>
+
+          {/* My Profile */}
+          <div className="py-1">
+            <button
+              onClick={() => { setIsOpen(false); router.push('/profile'); }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-3"
+            >
+              <User className="w-4 h-4" />
+              <span>My Profile</span>
+            </button>
           </div>
 
           {/* Sign Out */}
