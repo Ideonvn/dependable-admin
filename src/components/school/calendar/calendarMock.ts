@@ -35,14 +35,12 @@ function weeklyMondayOccurrences(
   month: number,
 ): CalendarEvent[] {
   const results: CalendarEvent[] = [];
-  const d = new Date(year, month - 1, 1);
-  // advance to first Monday
-  while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
-  while (d.getMonth() === month - 1) {
-    const start = new Date(d);
-    start.setUTCHours(8, 0, 0, 0);
-    const end = new Date(d);
-    end.setUTCHours(8, 30, 0, 0);
+  // Use UTC throughout to avoid local-timezone day drift
+  const d = new Date(Date.UTC(year, month - 1, 1));
+  while (d.getUTCDay() !== 1) d.setUTCDate(d.getUTCDate() + 1);
+  while (d.getUTCMonth() === month - 1) {
+    const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 8, 0));
+    const end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 8, 30));
     results.push({
       id: seriesId,
       school_id: schoolId,
@@ -59,14 +57,14 @@ function weeklyMondayOccurrences(
       occurrence_start_dt: start.toISOString(),
       occurrence_end_dt: end.toISOString(),
     });
-    d.setDate(d.getDate() + 7);
+    d.setUTCDate(d.getUTCDate() + 7);
   }
   return results;
 }
 
 const SERIES_ID = 'series-assembly-001';
 
-// One-off events (not recurring)
+// school_id sentinel '__SCHOOL_ID__' is replaced with the real schoolId in initStore
 const SEED_EVENTS: CalendarEvent[] = [
   {
     id: 'evt-sports-day',
@@ -267,7 +265,7 @@ export async function updateCalendarEvent(
 
   if (editMode === 'THIS' && occurrenceDate) {
     const thisIdx = store.findIndex(
-      (e) => e.id === eventId && (occurrenceDate ? e.occurrence_start_dt?.startsWith(occurrenceDate) : true),
+      (e) => e.id === eventId && e.occurrence_start_dt?.startsWith(occurrenceDate),
     );
     if (thisIdx === -1) throw new Error('Occurrence not found');
     const orig = store[thisIdx];
@@ -288,8 +286,18 @@ export async function updateCalendarEvent(
   }
 
   if (editMode === 'THIS_AND_FUTURE' && occurrenceDate) {
-    const orig = store[idx];
-    store.splice(idx, 1);
+    // Find the original event to use as the base (before any removals)
+    const orig = store.find((e) => e.id === eventId);
+    if (!orig) throw new Error('Event not found');
+    // Remove all occurrences of this series from occurrenceDate forward
+    store = store.filter(
+      (e) =>
+        !(
+          e.id === eventId &&
+          e.occurrence_start_dt &&
+          e.occurrence_start_dt >= occurrenceDate
+        ),
+    );
     const newStart = payload.start_dt ?? occurrenceDate;
     const newEvent: CalendarEvent = {
       ...orig,
