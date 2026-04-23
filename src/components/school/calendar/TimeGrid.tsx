@@ -33,9 +33,9 @@ function isSameDay(isoStr: string, col: Date): boolean {
 
 function isTodayCol(col: Date, now: Date): boolean {
   return (
-    col.getUTCFullYear() === now.getFullYear() &&
-    col.getUTCMonth() === now.getMonth() &&
-    col.getUTCDate() === now.getDate()
+    col.getUTCFullYear() === now.getUTCFullYear() &&
+    col.getUTCMonth() === now.getUTCMonth() &&
+    col.getUTCDate() === now.getUTCDate()
   );
 }
 
@@ -103,7 +103,7 @@ export default function TimeGrid({ columns, events, onEventClick, onSlotClick }:
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
   const now = new Date();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const nowMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
   const nowTop = (nowMinutes / 60) * HOUR_HEIGHT;
 
   // Auto-scroll to 07:00 on mount
