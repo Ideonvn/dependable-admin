@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useTheme } from 'next-themes';
 import { CalendarEvent, CalendarEventScope } from '@/types/calendar';
 import { CalendarDays } from 'lucide-react';
@@ -34,9 +35,11 @@ function groupByDay(events: CalendarEvent[], from: Date, days: number): DayGroup
   });
 
   const groups: DayGroup[] = [];
+  const fromMidnightUTC = Date.UTC(
+    from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()
+  );
   for (let i = 0; i < days; i++) {
-    const d = new Date(from);
-    d.setDate(from.getDate() + i);
+    const d = new Date(fromMidnightUTC + i * 86_400_000);
     const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
     if (map.has(key)) {
       groups.push({
@@ -64,7 +67,7 @@ export default function CalendarScheduleView({
 }: CalendarScheduleViewProps) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
-  const groups = groupByDay(events, currentDate, 90);
+  const groups = useMemo(() => groupByDay(events, currentDate, 90), [events, currentDate]);
 
   if (groups.length === 0) {
     return (
@@ -82,13 +85,13 @@ export default function CalendarScheduleView({
           {/* Date header */}
           <div className="flex items-baseline gap-3 px-6 py-3 bg-gray-50 dark:bg-gray-900/50">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase w-8">
-              {group.date.toLocaleDateString('en-GB', { weekday: 'short' })}
+              {group.date.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' })}
             </span>
             <span className="text-3xl font-light text-gray-900 dark:text-gray-100">
-              {group.date.getDate()}
+              {group.date.getUTCDate()}
             </span>
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              {group.date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+              {group.date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })}
             </span>
           </div>
 
@@ -100,7 +103,7 @@ export default function CalendarScheduleView({
 
             return (
               <button
-                key={ev.id + (ev.occurrence_start_dt ?? ev.start_dt)}
+                key={ev.id + '|' + (ev.occurrence_start_dt ?? ev.start_dt)}
                 onClick={() => onEventClick(ev)}
                 className="w-full text-left px-6 py-3 flex gap-4 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors border-b border-gray-50 dark:border-gray-900"
               >
