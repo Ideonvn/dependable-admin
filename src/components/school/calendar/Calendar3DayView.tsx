@@ -6,7 +6,7 @@ import TimeGrid from './TimeGrid';
 interface Calendar3DayViewProps {
   currentDate: Date;
   events: CalendarEvent[];
-  onEventClick: (event: CalendarEvent) => void;
+  onEventClick: (event: CalendarEvent, columnDate: Date) => void;
   onSlotClick: (date: Date, hour: number) => void;
 }
 
@@ -25,7 +25,7 @@ export default function Calendar3DayView({
     <TimeGrid
       columns={[prev, currentDate, next]}
       events={events}
-      onEventClick={(ev) => onEventClick(ev)}
+      onEventClick={(ev, col) => onEventClick(ev, col)}
       onSlotClick={onSlotClick}
     />
   );

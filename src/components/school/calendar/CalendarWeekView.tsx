@@ -6,7 +6,7 @@ import TimeGrid from './TimeGrid';
 interface CalendarWeekViewProps {
   currentDate: Date;
   events: CalendarEvent[];
-  onEventClick: (event: CalendarEvent) => void;
+  onEventClick: (event: CalendarEvent, columnDate: Date) => void;
   onSlotClick: (date: Date, hour: number) => void;
 }
 
@@ -31,7 +31,7 @@ export default function CalendarWeekView({
     <TimeGrid
       columns={columns}
       events={events}
-      onEventClick={(ev) => onEventClick(ev)}
+      onEventClick={(ev, col) => onEventClick(ev, col)}
       onSlotClick={onSlotClick}
     />
   );
