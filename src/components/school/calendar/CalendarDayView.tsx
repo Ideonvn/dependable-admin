@@ -20,7 +20,7 @@ export default function CalendarDayView({
     <TimeGrid
       columns={[currentDate]}
       events={events}
-      onEventClick={(ev, col) => onEventClick(ev, col)}
+      onEventClick={onEventClick}
       onSlotClick={onSlotClick}
     />
   );

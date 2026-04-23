@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { CalendarEvent } from '@/types/calendar';
 import TimeGrid from './TimeGrid';
 
@@ -16,16 +17,17 @@ export default function Calendar3DayView({
   onEventClick,
   onSlotClick,
 }: Calendar3DayViewProps) {
-  const prev = new Date(currentDate);
-  prev.setDate(currentDate.getDate() - 1);
-  const next = new Date(currentDate);
-  next.setDate(currentDate.getDate() + 1);
+  const cols = useMemo(() => {
+    const prev = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate() - 1));
+    const next = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate() + 1));
+    return [prev, currentDate, next];
+  }, [currentDate]);
 
   return (
     <TimeGrid
-      columns={[prev, currentDate, next]}
+      columns={cols}
       events={events}
-      onEventClick={(ev, col) => onEventClick(ev, col)}
+      onEventClick={onEventClick}
       onSlotClick={onSlotClick}
     />
   );

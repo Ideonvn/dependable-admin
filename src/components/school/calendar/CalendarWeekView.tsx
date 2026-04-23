@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { CalendarEvent } from '@/types/calendar';
 import TimeGrid from './TimeGrid';
 
@@ -11,13 +12,13 @@ interface CalendarWeekViewProps {
 }
 
 function getWeekDays(date: Date): Date[] {
-  const sunday = new Date(date);
-  sunday.setDate(date.getDate() - date.getDay());
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(sunday);
-    d.setDate(sunday.getDate() + i);
-    return d;
-  });
+  const dow = date.getUTCDay(); // 0=Sun
+  const days: Date[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - dow + i));
+    days.push(d);
+  }
+  return days;
 }
 
 export default function CalendarWeekView({
@@ -26,12 +27,12 @@ export default function CalendarWeekView({
   onEventClick,
   onSlotClick,
 }: CalendarWeekViewProps) {
-  const columns = getWeekDays(currentDate);
+  const cols = useMemo(() => getWeekDays(currentDate), [currentDate]);
   return (
     <TimeGrid
-      columns={columns}
+      columns={cols}
       events={events}
-      onEventClick={(ev, col) => onEventClick(ev, col)}
+      onEventClick={onEventClick}
       onSlotClick={onSlotClick}
     />
   );

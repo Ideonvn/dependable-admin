@@ -13,17 +13,29 @@ interface PositionedEvent {
   height: number;
   colIndex: number;
   colCount: number;
+  startMin: number;
+  endMin: number;
 }
 
-function toMinutes(dt: Date): number {
-  return dt.getHours() * 60 + dt.getMinutes();
+function toMinutes(isoStr: string): number {
+  const d = new Date(isoStr);
+  return d.getUTCHours() * 60 + d.getUTCMinutes();
 }
 
-function isSameDay(a: Date, b: Date): boolean {
+function isSameDay(isoStr: string, col: Date): boolean {
+  const d = new Date(isoStr);
   return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
+    d.getUTCFullYear() === col.getUTCFullYear() &&
+    d.getUTCMonth() === col.getUTCMonth() &&
+    d.getUTCDate() === col.getUTCDate()
+  );
+}
+
+function isTodayCol(col: Date, now: Date): boolean {
+  return (
+    col.getUTCFullYear() === now.getFullYear() &&
+    col.getUTCMonth() === now.getMonth() &&
+    col.getUTCDate() === now.getDate()
   );
 }
 
@@ -51,10 +63,10 @@ function layoutEvents(dayEvents: CalendarEvent[]): PositionedEvent[] {
   const cols: number[] = []; // end-minute of last event in each column
 
   sorted.forEach((ev) => {
-    const start = new Date(ev.occurrence_start_dt ?? ev.start_dt);
-    const end = new Date(ev.occurrence_end_dt ?? ev.end_dt);
-    const startMin = toMinutes(start);
-    const endMin = Math.max(toMinutes(end), startMin + 30);
+    const startStr = ev.occurrence_start_dt ?? ev.start_dt;
+    const endStr = ev.occurrence_end_dt ?? ev.end_dt;
+    const startMin = toMinutes(startStr);
+    const endMin = Math.max(toMinutes(endStr), startMin + 30);
     const top = (startMin / 60) * HOUR_HEIGHT;
     const height = Math.max(((endMin - startMin) / 60) * HOUR_HEIGHT, 24);
 
@@ -62,20 +74,15 @@ function layoutEvents(dayEvents: CalendarEvent[]): PositionedEvent[] {
     if (col === -1) col = cols.length;
     cols[col] = endMin;
 
-    positioned.push({ event: ev, top, height, colIndex: col, colCount: 0 });
+    positioned.push({ event: ev, top, height, colIndex: col, colCount: 0, startMin, endMin });
   });
 
-  // Set colCount = max columns used in each event's time range
+  // Assign colCount: each event's colCount = max columns in its overlap cluster
   positioned.forEach((p) => {
-    const startMin = toMinutes(new Date(p.event.occurrence_start_dt ?? p.event.start_dt));
-    const endMin = toMinutes(new Date(p.event.occurrence_end_dt ?? p.event.end_dt));
     let maxCol = p.colIndex;
     positioned.forEach((q) => {
-      if (q === p) return;
-      const qStart = toMinutes(new Date(q.event.occurrence_start_dt ?? q.event.start_dt));
-      const qEnd = toMinutes(new Date(q.event.occurrence_end_dt ?? q.event.end_dt));
-      if (qStart < endMin && qEnd > startMin) {
-        maxCol = Math.max(maxCol, q.colIndex);
+      if (q !== p && q.startMin < p.endMin && q.endMin > p.startMin) {
+        if (q.colIndex > maxCol) maxCol = q.colIndex;
       }
     });
     p.colCount = maxCol + 1;
@@ -95,7 +102,6 @@ export default function TimeGrid({ columns, events, onEventClick, onSlotClick }:
   const scrollRef = useRef<HTMLDivElement>(null);
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
-  const today = new Date();
   const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const nowTop = (nowMinutes / 60) * HOUR_HEIGHT;
@@ -117,11 +123,11 @@ export default function TimeGrid({ columns, events, onEventClick, onSlotClick }:
         style={{ paddingLeft: TIME_LABEL_WIDTH }}
       >
         {columns.map((col, i) => {
-          const isToday = isSameDay(col, today);
+          const isToday = isTodayCol(col, now);
           return (
             <div key={i} className="flex-1 flex flex-col items-center py-2 border-l border-gray-100 dark:border-gray-800">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                {col.toLocaleDateString('en-GB', { weekday: 'short' })}
+                {col.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' })}
               </span>
               <span
                 className={`text-lg font-semibold w-8 h-8 flex items-center justify-center rounded-full ${
@@ -130,7 +136,7 @@ export default function TimeGrid({ columns, events, onEventClick, onSlotClick }:
                     : 'text-gray-900 dark:text-gray-100'
                 }`}
               >
-                {col.getDate()}
+                {col.getUTCDate()}
               </span>
             </div>
           );
@@ -156,12 +162,11 @@ export default function TimeGrid({ columns, events, onEventClick, onSlotClick }:
           {/* Column grid */}
           <div className="flex flex-1">
             {columns.map((col, colIdx) => {
-              const colEvents = events.filter((e) => {
-                const d = new Date(e.occurrence_start_dt ?? e.start_dt);
-                return isSameDay(d, col) && !e.all_day;
-              });
+              const colEvents = events.filter((e) =>
+                isSameDay(e.occurrence_start_dt ?? e.start_dt, col) && !e.all_day,
+              );
               const positioned = layoutEvents(colEvents);
-              const isToday = isSameDay(col, today);
+              const isToday = isTodayCol(col, now);
 
               return (
                 <div
@@ -193,18 +198,18 @@ export default function TimeGrid({ columns, events, onEventClick, onSlotClick }:
                   ))}
 
                   {/* Events */}
-                  {positioned.map((p, pi) => {
+                  {positioned.map((p) => {
                     const bg = scopeBgColor(p.event.scope, isDark);
                     const color = scopeTextColor(p.event.scope, isDark);
                     const width = `${100 / p.colCount}%`;
                     const left = `${(p.colIndex / p.colCount) * 100}%`;
                     const startDt = new Date(p.event.occurrence_start_dt ?? p.event.start_dt);
                     const endDt = new Date(p.event.occurrence_end_dt ?? p.event.end_dt);
-                    const timeLabel = `${startDt.getHours().toString().padStart(2, '0')}:${startDt.getMinutes().toString().padStart(2, '0')} – ${endDt.getHours().toString().padStart(2, '0')}:${endDt.getMinutes().toString().padStart(2, '0')}`;
+                    const timeLabel = `${startDt.getUTCHours().toString().padStart(2, '0')}:${startDt.getUTCMinutes().toString().padStart(2, '0')} – ${endDt.getUTCHours().toString().padStart(2, '0')}:${endDt.getUTCMinutes().toString().padStart(2, '0')}`;
 
                     return (
                       <button
-                        key={pi}
+                        key={p.event.id}
                         onClick={(e) => {
                           e.stopPropagation();
                           onEventClick(p.event, col);
