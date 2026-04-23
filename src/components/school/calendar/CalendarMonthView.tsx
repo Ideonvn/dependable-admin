@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { CalendarEvent } from '@/types/calendar';
 import EventChip from './EventChip';
 
@@ -13,6 +13,7 @@ interface CalendarMonthViewProps {
 
 const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MAX_CHIPS = 3;
+const TODAY = new Date();
 
 function buildGrid(currentDate: Date): Date[] {
   const year = currentDate.getFullYear();
@@ -52,16 +53,20 @@ export default function CalendarMonthView({
   onEmptyCellClick,
 }: CalendarMonthViewProps) {
   const [popoverDate, setPopoverDate] = useState<Date | null>(null);
-  const today = new Date();
-  const cells = buildGrid(currentDate);
 
-  function eventsForDay(date: Date): CalendarEvent[] {
-    return events
-      .filter((e) => {
-        const d = new Date(e.occurrence_start_dt ?? e.start_dt);
-        return isSameDay(d, date);
-      })
-      .sort((a, b) => {
+  const cells = useMemo(() => buildGrid(currentDate), [currentDate]);
+
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+    for (const e of events) {
+      const d = new Date(e.occurrence_start_dt ?? e.start_dt);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(e);
+    }
+    // Sort each day's events: all-day first, then by start time
+    for (const [, dayEvents] of map) {
+      dayEvents.sort((a, b) => {
         if (a.all_day && !b.all_day) return -1;
         if (!a.all_day && b.all_day) return 1;
         return (
@@ -69,6 +74,13 @@ export default function CalendarMonthView({
           new Date(b.occurrence_start_dt ?? b.start_dt).getTime()
         );
       });
+    }
+    return map;
+  }, [events]);
+
+  function getDayEvents(date: Date): CalendarEvent[] {
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    return eventsByDay.get(key) ?? [];
   }
 
   return (
@@ -87,15 +99,15 @@ export default function CalendarMonthView({
 
       {/* Grid */}
       <div className="flex-1 grid grid-cols-7 grid-rows-6">
-        {cells.map((cell, idx) => {
-          const dayEvents = eventsForDay(cell);
+        {cells.map((cell) => {
+          const dayEvents = getDayEvents(cell);
           const overflow = dayEvents.length - MAX_CHIPS;
-          const isToday = isSameDay(cell, today);
+          const isToday = isSameDay(cell, TODAY);
           const inMonth = isCurrentMonth(cell, currentDate);
 
           return (
             <div
-              key={idx}
+              key={cell.toISOString().slice(0, 10)}
               onClick={() => onEmptyCellClick(cell)}
               className={`border-b border-r border-gray-100 dark:border-gray-800 p-1 flex flex-col gap-0.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 min-h-[100px] ${
                 !inMonth ? 'bg-gray-50 dark:bg-gray-900/50' : ''
@@ -161,7 +173,7 @@ export default function CalendarMonthView({
               </button>
             </div>
             <div className="flex flex-col gap-1">
-              {eventsForDay(popoverDate).map((ev) => (
+              {getDayEvents(popoverDate).map((ev) => (
                 <EventChip
                   key={ev.id + (ev.occurrence_start_dt ?? '')}
                   event={ev}
