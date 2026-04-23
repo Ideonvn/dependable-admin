@@ -72,8 +72,9 @@ export default function CalendarTab({ schoolId }: CalendarTabProps) {
     setCurrentDate(d);
   }
 
-  function handleEventClick(event: CalendarEvent) {
+  function handleEventClick(event: CalendarEvent, columnDate?: Date) {
     setSelectedEvent(event);
+    if (columnDate) setFormInitialDate(columnDate);
     if (event.is_recurring) {
       setShowRecurringEditPrompt(true);
     } else {
@@ -93,7 +94,7 @@ export default function CalendarTab({ schoolId }: CalendarTabProps) {
 
   function handleSlotClick(date: Date, hour: number) {
     const d = new Date(date);
-    d.setUTCHours(hour, 0, 0, 0);
+    d.setHours(hour, 0, 0, 0);
     handleEmptyCellClick(d);
   }
 
