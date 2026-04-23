@@ -28,7 +28,7 @@ function groupByDay(events: CalendarEvent[], from: Date, days: number): DayGroup
 
   events.forEach((ev) => {
     const d = new Date(ev.occurrence_start_dt ?? ev.start_dt);
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(ev);
   });
@@ -37,7 +37,7 @@ function groupByDay(events: CalendarEvent[], from: Date, days: number): DayGroup
   for (let i = 0; i < days; i++) {
     const d = new Date(from);
     d.setDate(from.getDate() + i);
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
     if (map.has(key)) {
       groups.push({
         date: d,
@@ -54,7 +54,7 @@ function groupByDay(events: CalendarEvent[], from: Date, days: number): DayGroup
 
 function formatTime(isoStr: string): string {
   const d = new Date(isoStr);
-  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  return `${d.getUTCHours().toString().padStart(2, '0')}:${d.getUTCMinutes().toString().padStart(2, '0')}`;
 }
 
 export default function CalendarScheduleView({
@@ -77,8 +77,8 @@ export default function CalendarScheduleView({
 
   return (
     <div className="flex-1 overflow-y-auto">
-      {groups.map((group, gi) => (
-        <div key={gi} className="border-b border-gray-100 dark:border-gray-800">
+      {groups.map((group) => (
+        <div key={group.date.toISOString().slice(0, 10)} className="border-b border-gray-100 dark:border-gray-800">
           {/* Date header */}
           <div className="flex items-baseline gap-3 px-6 py-3 bg-gray-50 dark:bg-gray-900/50">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase w-8">
@@ -93,14 +93,14 @@ export default function CalendarScheduleView({
           </div>
 
           {/* Events */}
-          {group.events.map((ev, ei) => {
+          {group.events.map((ev) => {
             const borderColor = scopeBorderColor(ev.scope, isDark);
             const startDt = ev.occurrence_start_dt ?? ev.start_dt;
             const endDt = ev.occurrence_end_dt ?? ev.end_dt;
 
             return (
               <button
-                key={ei}
+                key={ev.id + (ev.occurrence_start_dt ?? ev.start_dt)}
                 onClick={() => onEventClick(ev)}
                 className="w-full text-left px-6 py-3 flex gap-4 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors border-b border-gray-50 dark:border-gray-900"
               >
