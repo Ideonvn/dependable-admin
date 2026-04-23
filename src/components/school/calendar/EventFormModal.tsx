@@ -120,6 +120,16 @@ export default function EventFormModal({
     if (scope === 'CLASSROOM' && !classroomId) { setError('Please select a classroom'); return; }
     if (scope === 'STUDENT' && !studentId) { setError('Please select a student'); return; }
 
+    if (!allDay && new Date(endDt) <= new Date(startDt)) {
+      setError('End time must be after start time');
+      return;
+    }
+
+    if (recurring && recurEndType === 'on_date' && !recurEndDate) {
+      setError('Please select a recurrence end date');
+      return;
+    }
+
     const startIso = new Date(startDt).toISOString();
     const endIso = new Date(endDt).toISOString();
 
@@ -162,13 +172,13 @@ export default function EventFormModal({
     try {
       const occDate = event.occurrence_start_dt ? toLocalDateValue(event.occurrence_start_dt) : undefined;
       await deleteCalendarEvent(schoolId, event.id, deleteMode, occDate);
+      setShowDeletePrompt(false);
       onSuccess();
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete event');
     } finally {
       setSubmitting(false);
-      setShowDeletePrompt(false);
     }
   }
 
@@ -440,7 +450,13 @@ export default function EventFormModal({
               {mode === 'edit' ? (
                 <button
                   type="button"
-                  onClick={() => setShowDeletePrompt(true)}
+                  onClick={() => {
+                    if (event?.is_recurring) {
+                      setShowDeletePrompt(true);
+                    } else {
+                      handleDelete('ALL');
+                    }
+                  }}
                   disabled={submitting}
                   className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-50"
                 >
