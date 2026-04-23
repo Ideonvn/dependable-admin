@@ -10,7 +10,7 @@ import {
   EditMode,
 } from '@/types/calendar';
 import { schoolsApi, Classroom, Student } from '@/lib/schools';
-import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from './calendarMock';
+import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from './calendarApi';
 import RecurringDeletePrompt from './RecurringDeletePrompt';
 
 interface EventFormModalProps {

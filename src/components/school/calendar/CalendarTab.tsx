@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { CalendarEvent, CalendarView, EditMode } from '@/types/calendar';
-import { fetchCalendarEvents } from './calendarMock';
+import { fetchCalendarEvents } from './calendarApi';
 import CalendarToolbar from './CalendarToolbar';
 import CalendarMonthView from './CalendarMonthView';
 import CalendarWeekView from './CalendarWeekView';
