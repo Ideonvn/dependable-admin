@@ -35,7 +35,7 @@ function periodLabel(date: Date, view: CalendarView): string {
       return `${startStr} – ${endStr}`;
     }
     case 'day':
-      return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+      return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long' });
     case '3day': {
       const prev = new Date(date);
       prev.setDate(date.getDate() - 1);

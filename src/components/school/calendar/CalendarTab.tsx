@@ -26,25 +26,24 @@ export default function CalendarTab({ schoolId }: CalendarTabProps) {
   const [showEventForm, setShowEventForm] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-  const [selectedEditMode, setSelectedEditMode] = useState<EditMode | null>(null);
+  const [editMode, setEditMode] = useState<EditMode | null>(null);
   const [formInitialDate, setFormInitialDate] = useState<Date | null>(null);
   const [showRecurringEditPrompt, setShowRecurringEditPrompt] = useState(false);
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
 
   const loadEvents = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchCalendarEvents(
-        schoolId,
-        currentDate.getFullYear(),
-        currentDate.getMonth() + 1,
-      );
+      const data = await fetchCalendarEvents(schoolId, year, month + 1);
       setEvents(data);
     } catch (err) {
       console.error('Failed to load calendar events', err);
     } finally {
       setLoading(false);
     }
-  }, [schoolId, currentDate]);
+  }, [schoolId, year, month]);
 
   useEffect(() => {
     loadEvents();
@@ -78,7 +77,7 @@ export default function CalendarTab({ schoolId }: CalendarTabProps) {
     if (event.is_recurring) {
       setShowRecurringEditPrompt(true);
     } else {
-      setSelectedEditMode('ALL');
+      setEditMode('ALL');
       setFormMode('edit');
       setShowEventForm(true);
     }
@@ -88,7 +87,7 @@ export default function CalendarTab({ schoolId }: CalendarTabProps) {
     setFormInitialDate(date);
     setFormMode('create');
     setSelectedEvent(null);
-    setSelectedEditMode(null);
+    setEditMode(null);
     setShowEventForm(true);
   }
 
@@ -102,12 +101,12 @@ export default function CalendarTab({ schoolId }: CalendarTabProps) {
     setFormInitialDate(new Date());
     setFormMode('create');
     setSelectedEvent(null);
-    setSelectedEditMode(null);
+    setEditMode(null);
     setShowEventForm(true);
   }
 
   function handleRecurringEditSelect(mode: EditMode) {
-    setSelectedEditMode(mode);
+    setEditMode(mode);
     setShowRecurringEditPrompt(false);
     setFormMode('edit');
     setShowEventForm(true);
@@ -194,13 +193,13 @@ export default function CalendarTab({ schoolId }: CalendarTabProps) {
           mode={formMode}
           schoolId={schoolId}
           event={selectedEvent ?? undefined}
-          editMode={selectedEditMode ?? undefined}
+          editMode={editMode ?? undefined}
           initialDate={formInitialDate ?? undefined}
           onSuccess={handleSuccess}
           onClose={() => {
             setShowEventForm(false);
             setSelectedEvent(null);
-            setSelectedEditMode(null);
+            setEditMode(null);
             setFormInitialDate(null);
           }}
         />
