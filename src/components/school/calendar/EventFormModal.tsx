@@ -298,8 +298,8 @@ export default function EventFormModal({
                 }`}
               >
                 <span
-                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                    allDay ? 'translate-x-5' : 'translate-x-0.5'
+                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${
+                    allDay ? 'left-5' : 'left-0.5'
                   }`}
                 />
               </button>
@@ -372,8 +372,8 @@ export default function EventFormModal({
                   }`}
                 >
                   <span
-                    className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                      recurring ? 'translate-x-5' : 'translate-x-0.5'
+                    className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${
+                      recurring ? 'left-5' : 'left-0.5'
                     }`}
                   />
                 </button>

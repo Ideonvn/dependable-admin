@@ -99,8 +99,8 @@ export default function SchoolDetailPage() {
     { id: 'classrooms' as TabType, label: 'Classrooms', icon: BookOpen },
     { id: 'enrollments' as TabType, label: 'Enrollments', icon: ClipboardCheck },
     { id: 'schoolYears' as TabType, label: 'School Years', icon: Calendar },
-    { id: 'billing' as TabType, label: 'Billing', icon: Receipt },
     { id: 'calendar' as TabType, label: 'Calendar', icon: CalendarDays },
+    { id: 'billing' as TabType, label: 'Billing', icon: Receipt },
   ];
 
   if (loading) {
