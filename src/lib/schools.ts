@@ -261,6 +261,15 @@ export interface SchoolYear {
   ends_on: string;
 }
 
+export interface StudentReport {
+  id: string;
+  title: string;
+  filename: string;
+  content_type: string;
+  file_size: number;
+  _created_at: string;
+}
+
 export type SchoolReportStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | '';
 
 export interface SchoolReportResponse {
@@ -830,6 +839,37 @@ export const schoolsApi = {
       `/schools/${schoolId}/report/download`
     );
     return response.data;
+  },
+
+  // Student Reports
+  listStudentReports: async (schoolId: string, studentId: string): Promise<StudentReport[]> => {
+    const response = await apiClient.get<StudentReport[]>(
+      `/schools/${schoolId}/students/${studentId}/reports`
+    );
+    return response.data;
+  },
+
+  uploadStudentReport: async (schoolId: string, studentId: string, title: string, file: File): Promise<StudentReport> => {
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('file', file);
+    const response = await apiClient.post<StudentReport>(
+      `/schools/${schoolId}/students/${studentId}/reports`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  deleteStudentReport: async (schoolId: string, studentId: string, reportId: string): Promise<void> => {
+    await apiClient.delete(`/schools/${schoolId}/students/${studentId}/reports/${reportId}`);
+  },
+
+  getStudentReportDownloadUrl: async (schoolId: string, studentId: string, reportId: string): Promise<string> => {
+    const response = await apiClient.get<{ url: string; expires_in: number }>(
+      `/schools/${schoolId}/students/${studentId}/reports/${reportId}/download`
+    );
+    return response.data.url;
   },
 };
 
