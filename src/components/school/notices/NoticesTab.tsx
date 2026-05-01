@@ -4,8 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Bell, Plus, AlertCircle, RefreshCw } from 'lucide-react';
 import { Notice, NoticeScope } from '@/types/notices';
-import { Classroom, Student } from '@/lib/schools';
-import { schoolsApi } from '@/lib/schools';
+import { schoolsApi, Classroom, Student } from '@/lib/schools';
 import { fetchNotices } from './noticesApi';
 import NoticeFormModal from './NoticeFormModal';
 import NoticeDetailModal from './NoticeDetailModal';
@@ -181,6 +180,9 @@ export default function NoticesTab({ schoolId }: NoticesTabProps) {
                 <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
                   {formatDate(notice.created_at)}
                 </span>
+                <span className="text-xs text-gray-400 dark:text-gray-600 flex-shrink-0">
+                  — ack
+                </span>
               </button>
             );
           })}
@@ -193,6 +195,8 @@ export default function NoticesTab({ schoolId }: NoticesTabProps) {
           mode={formMode}
           schoolId={schoolId}
           notice={editingNotice ?? undefined}
+          classrooms={classrooms}
+          students={students}
           onSuccess={handleSuccess}
           onClose={() => {
             setShowForm(false);

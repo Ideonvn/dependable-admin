@@ -1,16 +1,19 @@
 // src/components/school/notices/NoticeFormModal.tsx
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
+import { useTheme } from 'next-themes';
 import { X, AlertCircle, Trash2, Paperclip, Upload, XCircle } from 'lucide-react';
 import { Notice, NoticeScope, NoticePayload, AttachmentPayload, NoticeAttachment } from '@/types/notices';
-import { schoolsApi, Classroom, Student } from '@/lib/schools';
+import { Classroom, Student } from '@/lib/schools';
 import { createNotice, updateNotice, deleteNotice, uploadAttachment } from './noticesApi';
 
 interface NoticeFormModalProps {
   mode: 'create' | 'edit';
   schoolId: string;
   notice?: Notice;
+  classrooms: Classroom[];
+  students: Student[];
   onSuccess: () => void;
   onClose: () => void;
 }
@@ -42,6 +45,8 @@ export default function NoticeFormModal({
   mode,
   schoolId,
   notice,
+  classrooms,
+  students,
   onSuccess,
   onClose,
 }: NoticeFormModalProps) {
@@ -58,23 +63,14 @@ export default function NoticeFormModal({
   // New files being uploaded or already uploaded this session
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
 
-  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Use next-themes via CSS class detection (matches existing EventFormModal pattern)
-  const isDark =
-    typeof document !== 'undefined' &&
-    document.documentElement.classList.contains('dark');
-
-  useEffect(() => {
-    schoolsApi.getClassrooms(schoolId).then(setClassrooms).catch(console.error);
-    schoolsApi.getStudents(schoolId).then(setStudents).catch(console.error);
-  }, [schoolId]);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
 
   async function handleFilesSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -116,6 +112,24 @@ export default function NoticeFormModal({
 
   function removeUploadingFile(id: string) {
     setUploadingFiles((prev) => prev.filter((f) => f.id !== id));
+  }
+
+  async function retryUpload(entry: UploadingFile) {
+    setUploadingFiles((prev) =>
+      prev.map((f) => (f.id === entry.id ? { ...f, status: 'uploading', error: undefined } : f)),
+    );
+    try {
+      const result = await uploadAttachment(schoolId, entry.file);
+      setUploadingFiles((prev) =>
+        prev.map((f) => (f.id === entry.id ? { ...f, status: 'done', result } : f)),
+      );
+    } catch {
+      setUploadingFiles((prev) =>
+        prev.map((f) =>
+          f.id === entry.id ? { ...f, status: 'error', error: 'Upload failed' } : f,
+        ),
+      );
+    }
   }
 
   function buildAttachmentsPayload(): AttachmentPayload[] {
@@ -346,6 +360,16 @@ export default function NoticeFormModal({
                   {f.file.name}
                   {f.status === 'error' && ` — ${f.error}`}
                 </span>
+                {f.status === 'error' && (
+                  <button
+                    type="button"
+                    onClick={() => retryUpload(f)}
+                    disabled={submitting}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline mr-1"
+                  >
+                    Retry
+                  </button>
+                )}
                 {f.status !== 'uploading' && (
                   <button
                     type="button"
