@@ -45,6 +45,7 @@ export default function NoticesTab({ schoolId }: NoticesTabProps) {
 
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [formDataLoaded, setFormDataLoaded] = useState(false);
 
   // Modal state
   const [showForm, setShowForm] = useState(false);
@@ -67,11 +68,20 @@ export default function NoticesTab({ schoolId }: NoticesTabProps) {
 
   useEffect(() => {
     loadNotices();
-    schoolsApi.getClassrooms(schoolId).then(setClassrooms).catch(console.error);
-    schoolsApi.getStudents(schoolId).then(setStudents).catch(console.error);
-  }, [schoolId, loadNotices]);
+  }, [loadNotices]);
+
+  function loadFormData() {
+    if (formDataLoaded) return;
+    Promise.all([
+      schoolsApi.getClassrooms(schoolId).then(setClassrooms),
+      schoolsApi.getStudents(schoolId).then(setStudents),
+    ])
+      .then(() => setFormDataLoaded(true))
+      .catch(console.error);
+  }
 
   function handleNewNotice() {
+    loadFormData();
     setEditingNotice(null);
     setFormMode('create');
     setShowForm(true);
@@ -83,6 +93,7 @@ export default function NoticesTab({ schoolId }: NoticesTabProps) {
 
   function handleEditFromDetail() {
     if (!selectedNotice) return;
+    loadFormData();
     setEditingNotice(selectedNotice);
     setFormMode('edit');
     setSelectedNotice(null);
@@ -146,9 +157,9 @@ export default function NoticesTab({ schoolId }: NoticesTabProps) {
             const badge = scopeBadgeStyle(notice.scope);
             const scopeTarget =
               notice.scope === 'CLASSROOM'
-                ? classrooms.find((c) => c.id === notice.classroom_id)?.name
+                ? notice.classroom_name
                 : notice.scope === 'STUDENT'
-                ? students.find((s) => s.id === notice.student_id)?.full_name
+                ? notice.student_name
                 : null;
 
             return (
@@ -210,8 +221,6 @@ export default function NoticesTab({ schoolId }: NoticesTabProps) {
         <NoticeDetailModal
           notice={selectedNotice}
           schoolId={schoolId}
-          classrooms={classrooms}
-          students={students}
           onEdit={handleEditFromDetail}
           onClose={() => setSelectedNotice(null)}
         />

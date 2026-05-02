@@ -13,14 +13,11 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Notice, NoticeScope, AcknowledgementSummary } from '@/types/notices';
-import { Classroom, Student } from '@/lib/schools';
 import { fetchAcknowledgements } from './noticesApi';
 
 interface NoticeDetailModalProps {
   notice: Notice;
   schoolId: string;
-  classrooms: Classroom[];
-  students: Student[];
   onEdit: () => void;
   onClose: () => void;
 }
@@ -60,8 +57,6 @@ function isImage(contentType: string): boolean {
 export default function NoticeDetailModal({
   notice,
   schoolId,
-  classrooms,
-  students,
   onEdit,
   onClose,
 }: NoticeDetailModalProps) {
@@ -74,9 +69,9 @@ export default function NoticeDetailModal({
 
   const scopeTargetName =
     notice.scope === 'CLASSROOM'
-      ? classrooms.find((c) => c.id === notice.classroom_id)?.name ?? notice.classroom_id
+      ? (notice.classroom_name ?? notice.classroom_id)
       : notice.scope === 'STUDENT'
-      ? students.find((s) => s.id === notice.student_id)?.full_name ?? notice.student_id
+      ? (notice.student_name ?? notice.student_id)
       : null;
 
   async function loadAcknowledgements() {

@@ -16,7 +16,9 @@ export interface Notice {
   content: string; // Markdown
   scope: NoticeScope;
   classroom_id: string | null;
+  classroom_name: string | null;
   student_id: string | null;
+  student_name: string | null;
   attachments: NoticeAttachment[];
   created_by: string | null;
   created_at: string; // ISO
