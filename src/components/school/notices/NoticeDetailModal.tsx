@@ -268,9 +268,13 @@ export default function NoticeDetailModal({
                                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200">
                                       acknowledged
                                     </span>
-                                  ) : (
+                                  ) : entry.state === 'SEEN' ? (
                                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200">
                                       seen
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200">
+                                      notified
                                     </span>
                                   )}
                                 </td>
