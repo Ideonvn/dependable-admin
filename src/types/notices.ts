@@ -58,7 +58,7 @@ export interface UploadedAttachment {
 export interface AcknowledgementEntry {
   user_id: string;
   name: string;
-  state: 'seen' | 'acknowledged';
+  state: 'SEEN' | 'ACKNOWLEDGED';
   timestamp: string;
 }
 

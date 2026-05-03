@@ -264,7 +264,7 @@ export default function NoticeDetailModal({
                                   {entry.name}
                                 </td>
                                 <td className="py-2">
-                                  {entry.state === 'acknowledged' ? (
+                                  {entry.state === 'ACKNOWLEDGED' ? (
                                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200">
                                       acknowledged
                                     </span>
