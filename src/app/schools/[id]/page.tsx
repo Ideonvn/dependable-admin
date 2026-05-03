@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Building2, Users, BookOpen, UserCog, ClipboardCheck, Receipt, Calendar, Download, RefreshCw, Loader2 } from 'lucide-react';
+import { ArrowLeft, Building2, Users, BookOpen, UserCog, ClipboardCheck, Receipt, Calendar, CalendarDays, Bell, Download, RefreshCw, Loader2 } from 'lucide-react';
 import { schoolsApi, School, SchoolReportResponse } from '@/lib/schools';
 import SchoolDetailsTab from '@/components/school/SchoolDetailsTab';
 import StudentsTab from '@/components/school/StudentsTab';
@@ -11,13 +11,15 @@ import ClassroomsTab from '@/components/school/ClassroomsTab';
 import EnrollmentsTab from '@/components/school/EnrollmentsTab';
 import BillingTab from '@/components/school/BillingTab';
 import SchoolYearsTab from '@/components/school/SchoolYearsTab';
+import CalendarTab from '@/components/school/calendar/CalendarTab';
+import NoticesTab from '@/components/school/notices/NoticesTab';
 
-type TabType = 'details' | 'students' | 'membership' | 'classrooms' | 'enrollments' | 'schoolYears' | 'billing';
+type TabType = 'details' | 'students' | 'membership' | 'classrooms' | 'enrollments' | 'schoolYears' | 'billing' | 'calendar' | 'notices';
 
 const getInitialTab = (): TabType => {
   if (typeof window !== 'undefined') {
     const hash = window.location.hash.slice(1);
-    if (['details', 'students', 'membership', 'classrooms', 'enrollments', 'schoolYears', 'billing'].includes(hash)) {
+    if (['details', 'students', 'membership', 'classrooms', 'enrollments', 'schoolYears', 'billing', 'calendar', 'notices'].includes(hash)) {
       return hash as TabType;
     }
   }
@@ -98,6 +100,8 @@ export default function SchoolDetailPage() {
     { id: 'classrooms' as TabType, label: 'Classrooms', icon: BookOpen },
     { id: 'enrollments' as TabType, label: 'Enrollments', icon: ClipboardCheck },
     { id: 'schoolYears' as TabType, label: 'School Years', icon: Calendar },
+    { id: 'calendar' as TabType, label: 'Calendar', icon: CalendarDays },
+    { id: 'notices' as TabType, label: 'Notices', icon: Bell },
     { id: 'billing' as TabType, label: 'Billing', icon: Receipt },
   ];
 
@@ -241,6 +245,8 @@ export default function SchoolDetailPage() {
         {activeTab === 'enrollments' && <EnrollmentsTab schoolId={school.id} />}
         {activeTab === 'schoolYears' && <SchoolYearsTab schoolId={school.id} />}
         {activeTab === 'billing' && <BillingTab schoolId={school.id} />}
+        {activeTab === 'calendar' && <CalendarTab schoolId={school.id} />}
+        {activeTab === 'notices' && <NoticesTab schoolId={school.id} />}
       </div>
     </main>
   );

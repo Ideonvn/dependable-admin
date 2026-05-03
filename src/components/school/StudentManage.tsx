@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { schoolsApi, StudentDetails, StudentContact, StudentEnrollment, AttendanceCalendarMonth, AttendanceBodyCheck } from '@/lib/schools';
-import { AlertCircle, Image as ImageIcon, Loader2, Save, Upload, Users, GraduationCap, Contact, ChevronDown, ChevronRight, Check, X, Plus, Calendar, ChevronLeft } from 'lucide-react';
+import { schoolsApi, StudentDetails, StudentContact, StudentEnrollment, AttendanceCalendarMonth, AttendanceBodyCheck, StudentReport } from '@/lib/schools';
+import { AlertCircle, Image as ImageIcon, Loader2, Save, Upload, Users, GraduationCap, Contact, ChevronDown, ChevronRight, Check, X, Plus, Calendar, ChevronLeft, FileText, Trash2, Download } from 'lucide-react';
 import ClassroomProfileImage from '../ClassroomProfileImage';
 import ContactProfileImage from '../ContactProfileImage';
 import StudentProfileImage from '../StudentProfileImage';
@@ -12,13 +12,13 @@ interface StudentManageProps {
   studentId: string;
 }
 
-type TabKey = 'details' | 'contacts' | 'enrollments' | 'attendance';
+type TabKey = 'details' | 'contacts' | 'enrollments' | 'attendance' | 'reports';
 type StudentStatus = 'active' | 'left' | 'graduated';
 
 const getInitialTab = (): TabKey => {
   if (typeof window !== 'undefined') {
     const hash = window.location.hash.slice(1);
-    if (hash === 'details' || hash === 'contacts' || hash === 'enrollments' || hash === 'attendance') {
+    if (hash === 'details' || hash === 'contacts' || hash === 'enrollments' || hash === 'attendance' || hash === 'reports') {
       return hash as TabKey;
     }
   }
@@ -43,6 +43,15 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
   const [enrollments, setEnrollments] = useState<StudentEnrollment[]>([]);
   const [attendanceCalendar, setAttendanceCalendar] = useState<AttendanceCalendarMonth | null>(null);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
+
+  const [reports, setReports] = useState<StudentReport[]>([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [deletingReportId, setDeletingReportId] = useState<string | null>(null);
+  const [downloadingReportId, setDownloadingReportId] = useState<string | null>(null);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -184,6 +193,68 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
       mounted = false;
     };
   }, [schoolId, studentId, activeTab, currentYear, currentMonth]);
+
+  // Fetch reports when reports tab is active
+  useEffect(() => {
+    if (activeTab !== 'reports') return;
+    let mounted = true;
+    async function loadReports() {
+      setReportsLoading(true);
+      try {
+        const data = await schoolsApi.listStudentReports(schoolId, studentId);
+        if (mounted) setReports(data);
+      } catch {
+        if (mounted) addToast({ title: 'Error', message: 'Failed to load reports.', variant: 'error' });
+      } finally {
+        if (mounted) setReportsLoading(false);
+      }
+    }
+    loadReports();
+    return () => { mounted = false; };
+  }, [schoolId, studentId, activeTab]);
+
+  const handleUploadReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadFile || !uploadTitle.trim()) return;
+    setUploading(true);
+    try {
+      const report = await schoolsApi.uploadStudentReport(schoolId, studentId, uploadTitle.trim(), uploadFile);
+      setReports((prev) => [report, ...prev]);
+      setShowUploadModal(false);
+      setUploadTitle('');
+      setUploadFile(null);
+      addToast({ title: 'Success', message: 'Report uploaded successfully.', variant: 'success' });
+    } catch {
+      addToast({ title: 'Error', message: 'Failed to upload report.', variant: 'error' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDownloadReport = async (reportId: string) => {
+    setDownloadingReportId(reportId);
+    try {
+      const url = await schoolsApi.getStudentReportDownloadUrl(schoolId, studentId, reportId);
+      window.open(url, '_blank');
+    } catch {
+      addToast({ title: 'Error', message: 'Failed to get download link.', variant: 'error' });
+    } finally {
+      setDownloadingReportId(null);
+    }
+  };
+
+  const handleDeleteReport = async (reportId: string) => {
+    setDeletingReportId(reportId);
+    try {
+      await schoolsApi.deleteStudentReport(schoolId, studentId, reportId);
+      setReports((prev) => prev.filter((r) => r.id !== reportId));
+      addToast({ title: 'Success', message: 'Report deleted.', variant: 'success' });
+    } catch {
+      addToast({ title: 'Error', message: 'Failed to delete report.', variant: 'error' });
+    } finally {
+      setDeletingReportId(null);
+    }
+  };
 
   const fullName = useMemo(() => `${firstName} ${lastName}`.trim(), [firstName, lastName]);
 
@@ -422,6 +493,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
           <TabButton icon={<Contact className="w-4 h-4" />} active={activeTab === 'contacts'} onClick={() => setActiveTab('contacts')}>Contacts</TabButton>
           <TabButton icon={<GraduationCap className="w-4 h-4" />} active={activeTab === 'enrollments'} onClick={() => setActiveTab('enrollments')}>Enrollments</TabButton>
           <TabButton icon={<Calendar className="w-4 h-4" />} active={activeTab === 'attendance'} onClick={() => setActiveTab('attendance')}>Attendance</TabButton>
+          <TabButton icon={<FileText className="w-4 h-4" />} active={activeTab === 'reports'} onClick={() => setActiveTab('reports')}>Reports</TabButton>
         </div>
 
         <div className="pt-4">
@@ -1064,8 +1136,131 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
               </div>
             </div>
           )}
+
+          {activeTab === 'reports' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Student Reports</h3>
+                <button
+                  onClick={() => { setUploadTitle(''); setUploadFile(null); setShowUploadModal(true); }}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white text-sm rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  <Plus className="w-4 h-4" />
+                  Upload Report
+                </button>
+              </div>
+
+              {reportsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#1A1A6D] dark:text-[#20B2AA]" />
+                </div>
+              ) : reports.length === 0 ? (
+                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                  <FileText className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                  <p className="text-sm">No reports uploaded yet.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100 dark:divide-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                  {reports.map((report) => (
+                    <div key={report.id} className="flex items-center justify-between px-4 py-3 bg-white dark:bg-[#0F1115]">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <FileText className="w-5 h-5 mt-0.5 text-[#1A1A6D] dark:text-[#20B2AA] flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{report.title}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {report.filename} &middot; {(report.file_size / 1024).toFixed(1)} KB &middot;{' '}
+                            {new Date(report._created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="ml-4 flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => handleDownloadReport(report.id)}
+                          disabled={downloadingReportId === report.id}
+                          className="p-1.5 text-gray-400 hover:text-[#1A1A6D] dark:hover:text-[#20B2AA] transition-colors disabled:opacity-50"
+                          title="Download report"
+                        >
+                          {downloadingReportId === report.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Download className="w-4 h-4" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteReport(report.id)}
+                          disabled={deletingReportId === report.id}
+                          className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+                          title="Delete report"
+                        >
+                          {deletingReportId === report.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Upload Report Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Upload Report</h3>
+              <button onClick={() => setShowUploadModal(false)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUploadReport} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title *</label>
+                <input
+                  type="text"
+                  value={uploadTitle}
+                  onChange={(e) => setUploadTitle(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  placeholder="e.g. Term 1 Progress Report"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">File *</label>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                  onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                  className="w-full text-sm text-gray-700 dark:text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#1A1A6D] dark:file:bg-[#20B2AA] file:text-white hover:file:opacity-90"
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowUploadModal(false)}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploading || !uploadFile || !uploadTitle.trim()}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+                >
+                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {uploading ? 'Uploading...' : 'Upload'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Edit Contact Modal */}
       {showEditContactModal && (
