@@ -25,7 +25,7 @@ export default function StudentsTab({ schoolId }: StudentsTabProps) {
   const loadStudents = async () => {
     setLoading(true);
     try {
-      const data = await schoolsApi.getStudents(schoolId);
+      const data = await schoolsApi.getStudents(schoolId, true);
       setStudents(data);
     } catch (error) {
       console.error('Error loading students:', error);

@@ -515,9 +515,9 @@ export const schoolsApi = {
   },
 
   // Get students for a specific school
-  getStudents: async (schoolId: string): Promise<Student[]> => {
+  getStudents: async (schoolId: string, includeInactive: boolean = false): Promise<Student[]> => {
     try {
-      const response = await apiClient.get<Student[]>(`/schools/${schoolId}/students`);
+      const response = await apiClient.get<Student[]>(`/schools/${schoolId}/students?include_inactive=${includeInactive}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching students:', error);
