@@ -22,8 +22,8 @@ interface FormData {
   lastName: string;
   gender: 'MALE' | 'FEMALE' | 'OTHER';
   dateOfBirth: string;
-  weightAtBirth?: number;
-  lengthAtBirth?: number;
+  weightAtBirth: number | undefined;
+  lengthAtBirth: number | undefined;
   
   // Student contact details
   contactEmail: string;
@@ -105,9 +105,10 @@ export default function EnrollStudentModal({
 
     try {
       // Validate required fields
-      if (!formData.externalRef || !formData.classroomId || !formData.firstName || 
+      if (!formData.classroomId || !formData.firstName ||
           !formData.lastName || !formData.dateOfBirth || !formData.contactEmail ||
-          !formData.contactFirstName || !formData.contactLastName) {
+          !formData.contactFirstName || !formData.contactLastName ||
+          formData.weightAtBirth === undefined || formData.lengthAtBirth === undefined) {
         setError('Please fill in all required fields');
         setSubmitting(false);
         return;
@@ -206,7 +207,7 @@ export default function EnrollStudentModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Student ID <span className="text-red-500">*</span>
+                      Student ID
                     </label>
                     <input
                       type="text"
@@ -323,7 +324,7 @@ export default function EnrollStudentModal({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Weight at Birth (grams)
+                      Weight at Birth (grams) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
@@ -338,7 +339,7 @@ export default function EnrollStudentModal({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Length at Birth (millimeters)
+                      Length at Birth (millimeters) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
