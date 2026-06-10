@@ -53,6 +53,8 @@ export default function LogConfigClient() {
   const [editingField, setEditingField] = useState<LogField | null>(null);
   const [editForm, setEditForm] = useState<UpdateFieldPayload>({});
   const [editSaving, setEditSaving] = useState(false);
+  const [fieldConfigText, setFieldConfigText] = useState('');
+  const [fieldConfigError, setFieldConfigError] = useState<string | null>(null);
 
   // Add-field modal state
   const [addFieldOpen, setAddFieldOpen] = useState(false);
@@ -137,15 +139,28 @@ export default function LogConfigClient() {
       sort_order: field.sort_order,
       is_required: field.is_required,
       is_hidden: field.is_hidden,
-      field_config: field.field_config,
     });
+    setFieldConfigText(field.field_config ? JSON.stringify(field.field_config, null, 2) : '');
+    setFieldConfigError(null);
   };
 
   const saveEditField = async () => {
     if (!editingField) return;
+    let parsedConfig: Record<string, unknown> | null = null;
+    if (fieldConfigText.trim()) {
+      try {
+        parsedConfig = JSON.parse(fieldConfigText);
+      } catch {
+        setFieldConfigError('Invalid JSON — please fix before saving.');
+        return;
+      }
+    }
     setEditSaving(true);
     try {
-      const updated = await logConfigApi.updateField(editingField.id, editForm);
+      const updated = await logConfigApi.updateField(editingField.id, {
+        ...editForm,
+        field_config: parsedConfig,
+      });
       setFields((c) => c.map((f) => (f.id === updated.id ? updated : f)));
       setEditingField(null);
       addToast('Field updated successfully.');
@@ -384,6 +399,7 @@ export default function LogConfigClient() {
                     <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Field Name</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Label</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Type</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Source Attr</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Sort</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Required</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Hidden</th>
@@ -402,6 +418,11 @@ export default function LogConfigClient() {
                         <td className="px-4 py-3 text-sm">
                           <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                             {FIELD_TYPE_LABELS[field.field_type] ?? field.field_type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${field.is_source_attribute ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
+                            {field.is_source_attribute ? 'Yes' : 'No'}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{field.sort_order}</td>
@@ -427,7 +448,7 @@ export default function LogConfigClient() {
                       </tr>
                       {field.field_type === 'tile-select' && (
                         <tr key={`${field.id}-options`} className="bg-gray-50/50 dark:bg-gray-900/20">
-                          <td colSpan={7} className="px-8 py-4">
+                          <td colSpan={8} className="px-8 py-4">
                             <OptionsSection
                               field={field}
                               options={optionsMap[`${field.log_source}:${field.field_name}`]}
@@ -456,7 +477,7 @@ export default function LogConfigClient() {
                   ))}
                   {activeFields.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-600 dark:text-gray-400">
+                      <td colSpan={8} className="px-4 py-10 text-center text-sm text-gray-600 dark:text-gray-400">
                         No fields for this log source.
                       </td>
                     </tr>
@@ -508,6 +529,29 @@ export default function LogConfigClient() {
                 />
                 Hidden
               </label>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Field Config <span className="text-xs text-gray-500 font-normal">(JSON)</span>
+              </label>
+              <textarea
+                value={fieldConfigText}
+                onChange={(e) => {
+                  setFieldConfigText(e.target.value);
+                  setFieldConfigError(null);
+                }}
+                rows={6}
+                spellCheck={false}
+                placeholder="{}"
+                className={`w-full px-3 py-2 rounded-lg border font-mono text-xs bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 resize-y ${
+                  fieldConfigError
+                    ? 'border-red-400 dark:border-red-600 focus:ring-red-400'
+                    : 'border-gray-300 dark:border-gray-700'
+                }`}
+              />
+              {fieldConfigError && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{fieldConfigError}</p>
+              )}
             </div>
           </div>
           <div className="flex justify-end gap-3 mt-6">
