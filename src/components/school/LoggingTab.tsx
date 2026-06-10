@@ -180,7 +180,9 @@ export default function LoggingTab({ schoolId }: { schoolId: string }) {
   // ── Derived ───────────────────────────────────────────────────────────────
 
   const grouped = groupBySource(fields);
-  const sources = Object.keys(grouped).sort();
+  const sources = Object.keys(grouped)
+    .filter((s) => grouped[s].some((f) => f.field_type === 'tile-select'))
+    .sort();
   const activeFields = activeSource
     ? (grouped[activeSource] ?? [])
         .filter((f) => f.field_type === 'tile-select')
@@ -190,7 +192,7 @@ export default function LoggingTab({ schoolId }: { schoolId: string }) {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="py-6">
+    <div className="px-6 py-6">
       {error && (
         <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-xl p-4 mb-6">
           <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
