@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, RefreshCw, FileText, Plus, Pencil, Eye, EyeOff, Trash2, X, Check, GripVertical } from 'lucide-react';
 import { logConfigApi, LogField, LogOption, CreateOptionPayload, UpdateFieldPayload } from '@/lib/logConfig';
@@ -99,43 +99,26 @@ export default function LogConfigClient() {
     loadFields();
   }, [loadFields]);
 
+  // Tracks keys that have already been fetched (or are in-flight) so we never double-fetch
+  const fetchedKeysRef = useRef<Set<string>>(new Set());
+
   const loadOptions = useCallback(
-    async (field: LogField) => {
+    (field: LogField) => {
       const key = `${field.log_source}:${field.field_name}`;
-      setOptionsMap((current) => {
-        if (current[key] !== undefined) return current;
-        return current;
-      });
-      setOptionsLoading((current) => {
-        if (current[key]) return current;
-        // Trigger fetch outside setState
-        return { ...current, [key]: true };
-      });
+      if (fetchedKeysRef.current.has(key)) return;
+      fetchedKeysRef.current.add(key);
+      setOptionsLoading((c) => ({ ...c, [key]: true }));
+      logConfigApi
+        .listOptions(field.log_source, field.field_name)
+        .then((data) => setOptionsMap((c) => ({ ...c, [key]: data })))
+        .catch(() => {
+          addToast(`Failed to load options for ${field.label}`, 'error');
+          setOptionsMap((c) => ({ ...c, [key]: [] }));
+        })
+        .finally(() => setOptionsLoading((c) => ({ ...c, [key]: false })));
     },
-    []
+    [addToast]
   );
-
-  // Actual fetch triggered when optionsLoading changes to true for a key
-  useEffect(() => {
-    const pendingKeys = Object.entries(optionsLoading)
-      .filter(([key, loading]) => loading && optionsMap[key] === undefined)
-      .map(([key]) => key);
-
-    if (pendingKeys.length === 0) return;
-
-    pendingKeys.forEach(async (key) => {
-      const [logSource, fieldName] = key.split(':');
-      try {
-        const data = await logConfigApi.listOptions(logSource, fieldName);
-        setOptionsMap((c) => ({ ...c, [key]: data }));
-      } catch {
-        addToast(`Failed to load options for ${fieldName}`, 'error');
-        setOptionsMap((c) => ({ ...c, [key]: [] }));
-      } finally {
-        setOptionsLoading((c) => ({ ...c, [key]: false }));
-      }
-    });
-  }, [optionsLoading, optionsMap, addToast]);
 
   // Load options for tile-select fields in active tab
   useEffect(() => {
@@ -409,7 +392,7 @@ export default function LogConfigClient() {
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                   {activeFields.map((field) => (
-                    <>
+                    <React.Fragment key={field.id}>
                       <tr
                         key={field.id}
                         className="hover:bg-gray-50 dark:hover:bg-gray-900/40 transition-colors"
@@ -469,7 +452,7 @@ export default function LogConfigClient() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                   ))}
                   {activeFields.length === 0 && (
                     <tr>
