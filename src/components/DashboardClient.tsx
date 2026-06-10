@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, Building2, ClipboardList, Users } from 'lucide-react';
+import { RefreshCw, Building2, ClipboardList, Users, FileText } from 'lucide-react';
 import { schoolsApi, School } from '@/lib/schools';
 import SchoolCardMain from '@/components/SchoolCardMain';
 import { userSetupService } from '@/lib/userSetupService';
@@ -60,6 +60,16 @@ export default function DashboardClient() {
             </button>
           )}
           
+          {isSuperAdmin && (
+            <button
+              onClick={() => router.push('/system/log-config')}
+              className="flex items-center gap-2 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg hover:opacity-90 transition-all shadow-lg hover:shadow-xl font-medium"
+            >
+              <FileText className="w-5 h-5" />
+              Logging
+            </button>
+          )}
+
           {isSuperAdmin && (
             <button
               onClick={() => router.push('/onboarding')}
