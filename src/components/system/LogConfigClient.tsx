@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, RefreshCw, FileText, Plus, Pencil, Eye, EyeOff, Trash2, X, Check } from 'lucide-react';
+import { ArrowLeft, RefreshCw, FileText, Plus, Pencil, Eye, EyeOff, Trash2, X, Check, GripVertical } from 'lucide-react';
 import { logConfigApi, LogField, LogOption, CreateOptionPayload, UpdateFieldPayload } from '@/lib/logConfig';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -285,6 +285,29 @@ export default function LogConfigClient() {
     }
   };
 
+  const reorderOptions = useCallback(
+    async (logSource: string, fieldName: string, reordered: LogOption[]) => {
+      const key = `${logSource}:${fieldName}`;
+      // Assign sort_order as multiples of 10 to leave gaps for future inserts
+      const withNewOrder = reordered.map((o, i) => ({ ...o, sort_order: i * 10 }));
+      // Optimistic update
+      setOptionsMap((c) => ({ ...c, [key]: withNewOrder }));
+      // Only PATCH items whose sort_order actually changed
+      const changed = withNewOrder.filter((o) => {
+        const original = reordered.find((r) => r.id === o.id);
+        return original && original.sort_order !== o.sort_order;
+      });
+      try {
+        await Promise.all(changed.map((o) => logConfigApi.updateOption(o.id, { sort_order: o.sort_order })));
+      } catch {
+        // Roll back to original order on failure
+        setOptionsMap((c) => ({ ...c, [key]: reordered }));
+        addToast('Failed to save new order.', 'error');
+      }
+    },
+    [addToast]
+  );
+
   // ── Derived ─────────────────────────────────────────────────────────────
 
   const grouped = groupBySource(fields);
@@ -439,6 +462,9 @@ export default function LogConfigClient() {
                                 setAddOptionField(field);
                                 setAddOptionForm({ value: '', label: '', sort_order: 0 });
                               }}
+                              onReorder={(reordered) =>
+                                reorderOptions(field.log_source, field.field_name, reordered)
+                              }
                             />
                           </td>
                         </tr>
@@ -742,6 +768,7 @@ interface OptionsSectionProps {
   onToggleHide: (o: LogOption) => void;
   onDelete: (o: LogOption) => void;
   onAddClick: () => void;
+  onReorder: (reordered: LogOption[]) => void;
 }
 
 function OptionsSection({
@@ -757,7 +784,41 @@ function OptionsSection({
   onToggleHide,
   onDelete,
   onAddClick,
+  onReorder,
 }: OptionsSectionProps) {
+  const dragIndexRef = useRef<number | null>(null);
+  const [dragFromIndex, setDragFromIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const handleDragStart = (index: number) => {
+    dragIndexRef.current = index;
+    setDragFromIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    const fromIndex = dragIndexRef.current;
+    if (fromIndex === null || fromIndex === dropIndex || !options) return;
+    const reordered = [...options];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(dropIndex, 0, moved);
+    onReorder(reordered);
+    dragIndexRef.current = null;
+    setDragFromIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    dragIndexRef.current = null;
+    setDragFromIndex(null);
+    setDragOverIndex(null);
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
@@ -783,11 +844,18 @@ function OptionsSection({
 
       {!loading && options && options.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {options.map((opt) => (
+          {options.map((opt, index) => (
             <div
               key={opt.id}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-opacity ${
-                opt.is_hidden
+              draggable={editingOptionId !== opt.id}
+              onDragStart={() => handleDragStart(index)}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDrop={(e) => handleDrop(e, index)}
+              onDragEnd={handleDragEnd}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-all ${
+                dragOverIndex === index && dragFromIndex !== index
+                  ? 'border-[#1A1A6D] dark:border-[#20B2AA] ring-2 ring-[#1A1A6D]/30 dark:ring-[#20B2AA]/30'
+                  : opt.is_hidden
                   ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/20 opacity-50'
                   : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800'
               }`}
@@ -839,6 +907,12 @@ function OptionsSection({
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>
+                  <span
+                    className="text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 cursor-grab active:cursor-grabbing ml-0.5"
+                    title="Drag to reorder"
+                  >
+                    <GripVertical className="w-3 h-3" />
+                  </span>
                 </>
               )}
             </div>
