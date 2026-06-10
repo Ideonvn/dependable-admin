@@ -206,7 +206,7 @@ export default function LoggingTab({ schoolId }: { schoolId: string }) {
       ) : (
         <>
           {/* Source tabs */}
-          <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto">
+          <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {sources.map((source) => (
               <button
                 key={source}
