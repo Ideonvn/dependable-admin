@@ -40,6 +40,8 @@ export interface SystemUser {
   image_filename: string | null;
   has_login_user: boolean;
   user_id: string | null;
+  user_email: string | null;
+  email_mismatch: boolean;
   auth_active: boolean;
   is_admin: boolean;
   created_at: string;
@@ -226,5 +228,10 @@ export const systemUsersApi = {
     await apiClient.post(
       `/admin/users/${personId}/schedule-deletion`
     );
+  },
+
+  createLogin: async (personId: string): Promise<SystemUser> => {
+    const response = await apiClient.post<SystemUser>(`/admin/users/${personId}/create-login`);
+    return response.data;
   },
 };

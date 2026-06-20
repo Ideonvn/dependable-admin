@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle, Key, Pencil, RefreshCw, Search, ShieldAlert, Trash2, UserCheck, UserX, Users, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle, Key, LogIn, Pencil, RefreshCw, Search, ShieldAlert, Trash2, UserCheck, UserX, Users, X } from 'lucide-react';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { systemUsersApi, SystemUser } from '@/lib/users';
 
@@ -17,6 +17,8 @@ const mapSystemUser = (user: SystemUser) => ({
   idCountry: user.id_country,
   idType: user.id_type,
   hasLoginUser: user.has_login_user,
+  userEmail: user.user_email,
+  emailMismatch: user.email_mismatch,
   authActive: user.auth_active,
   isAdmin: user.is_admin,
   updatedAt: user.updated_at,
@@ -61,7 +63,7 @@ export default function SystemUsersClient() {
   const [pageSize, setPageSize] = useState(100);
   const [confirmAction, setConfirmAction] = useState<{
     isOpen: boolean;
-    action: 'deactivate' | 'activate' | 'reset-password' | 'add-admin' | 'remove-admin' | 'schedule-deletion' | null;
+    action: 'deactivate' | 'activate' | 'reset-password' | 'add-admin' | 'remove-admin' | 'schedule-deletion' | 'create-login' | null;
   }>({ isOpen: false, action: null });
   const [toasts, setToasts] = useState<{ id: string; title?: string; message: string; variant?: 'success' | 'error' | 'info' }[]>([]);
 
@@ -274,6 +276,10 @@ export default function SystemUsersClient() {
     setConfirmAction({ isOpen: true, action: 'schedule-deletion' });
   };
 
+  const handleCreateLogin = () => {
+    setConfirmAction({ isOpen: true, action: 'create-login' });
+  };
+
   const executeAction = async () => {
     if (!confirmAction.action) return;
 
@@ -334,6 +340,16 @@ export default function SystemUsersClient() {
           addToast({
             title: 'Deletion Scheduled',
             message: `${personIdsForDeletion.length} user account(s) have been scheduled for deletion. Notification emails have been sent.`,
+            variant: 'success',
+          });
+          break;
+
+        case 'create-login':
+          const personIdsWithoutLogin = selectedUsers.filter((u) => !u.hasLoginUser).map((u) => u.personId);
+          await Promise.all(personIdsWithoutLogin.map((personId) => systemUsersApi.createLogin(personId)));
+          addToast({
+            title: 'Login Created',
+            message: `Login account(s) provisioned for ${personIdsWithoutLogin.length} person(s). A password reset email has been sent to their email address.`,
             variant: 'success',
           });
           break;
@@ -399,6 +415,13 @@ export default function SystemUsersClient() {
           message: `Are you sure you want to schedule ${count} user account(s) for deletion? A notification email will be sent to each user. This action cannot be undone.`,
           confirmText: 'Schedule for Deletion',
           variant: 'danger' as const,
+        };
+      case 'create-login':
+        return {
+          title: 'Create Login Account',
+          message: `Provision a login account for ${count} person(s)? A password reset email will be sent to their email address so they can set a password.`,
+          confirmText: 'Create Login',
+          variant: 'info' as const,
         };
       default:
         return {
@@ -514,6 +537,15 @@ export default function SystemUsersClient() {
                 <Trash2 className="w-4 h-4" />
                 Schedule for Deletion
               </button>
+              {selectedUsers.some((u) => !u.hasLoginUser) && (
+                <button
+                  onClick={handleCreateLogin}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors"
+                >
+                  <LogIn className="w-4 h-4" />
+                  Create Login
+                </button>
+              )}
             </div>
           </div>
         ) : (
@@ -599,7 +631,17 @@ export default function SystemUsersClient() {
                   <td className="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                     {row.firstName} {row.lastName}
                   </td>
-                  <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">{row.email || '-'}</td>
+                  <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
+                    <div className="flex items-start gap-1.5">
+                      <span>{row.email || '-'}</span>
+                      {row.emailMismatch && (
+                        <span title={`Login email: ${row.userEmail}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 flex-shrink-0">
+                          <AlertTriangle className="w-3 h-3" />
+                          Mismatch
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">{row.idNumber || '-'}</td>
                   <td className="px-4 py-4 text-sm">
                     <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${badgeClass(row.hasLoginUser)}`}>

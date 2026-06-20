@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  ArrowLeft, AlertCircle, RefreshCw, Copy, Check, Plus, Trash2,
+  ArrowLeft, AlertCircle, AlertTriangle, RefreshCw, Copy, Check, Plus, Trash2,
   Pencil, Save, X, User, Shield, ShieldOff, ToggleLeft, ToggleRight,
-  ExternalLink, Search,
+  ExternalLink, Search, LogIn,
 } from 'lucide-react';
 import {
   systemUsersApi, SystemUser,
@@ -70,7 +70,7 @@ export default function SystemUserDetail({ personId }: { personId: string }) {
   });
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [authConfirm, setAuthConfirm] = useState<{
-    open: boolean; action: 'activate' | 'deactivate' | 'add-admin' | 'remove-admin' | null;
+    open: boolean; action: 'activate' | 'deactivate' | 'add-admin' | 'remove-admin' | 'create-login' | null;
   }>({ open: false, action: null });
   const [authActionLoading, setAuthActionLoading] = useState(false);
 
@@ -217,6 +217,7 @@ export default function SystemUserDetail({ personId }: { personId: string }) {
       else if (authConfirm.action === 'deactivate') await systemUsersApi.updateUserActive(personId, false);
       else if (authConfirm.action === 'add-admin') await systemUsersApi.updateAdminStatus(personId, true);
       else if (authConfirm.action === 'remove-admin') await systemUsersApi.updateAdminStatus(personId, false);
+      else if (authConfirm.action === 'create-login') await systemUsersApi.createLogin(personId);
       await loadUser();
     } catch {
       setUserError('Failed to update auth status.');
@@ -418,9 +419,18 @@ export default function SystemUserDetail({ personId }: { personId: string }) {
                           onChange={e => setFormData(p => ({ ...p, last_name: e.target.value }))} />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className={labelClass}>Email</label>
+                        <label className={labelClass}>Email (Person record)</label>
                         <input className={fieldClass} value={formData.email}
                           onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} />
+                        {user?.email_mismatch && (
+                          <div className="mt-2 flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                            <div className="text-xs text-amber-700 dark:text-amber-300">
+                              <span className="font-semibold">Email mismatch:</span> the login account uses a different email address.
+                              <div className="mt-0.5">Login email: <span className="font-mono font-medium">{user.user_email}</span></div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -484,6 +494,21 @@ export default function SystemUserDetail({ personId }: { personId: string }) {
 
                   <div>
                     <p className={sectionHeadClass}>Auth Status</p>
+                    {user && !user.has_login_user && (
+                      <div className="mb-4 flex items-center justify-between px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">No login account</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">This person cannot sign in yet.</p>
+                        </div>
+                        <button
+                          onClick={() => setAuthConfirm({ open: true, action: 'create-login' })}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors"
+                        >
+                          <LogIn className="w-4 h-4" />
+                          Create Login
+                        </button>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
                         <div>
@@ -906,18 +931,21 @@ export default function SystemUserDetail({ personId }: { personId: string }) {
           authConfirm.action === 'activate' ? 'Activate User' :
           authConfirm.action === 'deactivate' ? 'Deactivate User' :
           authConfirm.action === 'add-admin' ? 'Grant Admin Access' :
+          authConfirm.action === 'create-login' ? 'Create Login Account' :
           'Remove Admin Access'
         }
         message={
           authConfirm.action === 'activate' ? 'This user will be able to sign in again.' :
           authConfirm.action === 'deactivate' ? 'This user will no longer be able to sign in.' :
           authConfirm.action === 'add-admin' ? 'Grant this user full admin access to the platform?' :
+          authConfirm.action === 'create-login' ? 'Provision a login account for this person? A password reset email will be sent to their email address so they can set a password.' :
           'Remove admin privileges from this user?'
         }
         confirmText={
           authConfirm.action === 'activate' ? 'Activate' :
           authConfirm.action === 'deactivate' ? 'Deactivate' :
           authConfirm.action === 'add-admin' ? 'Grant Admin' :
+          authConfirm.action === 'create-login' ? 'Create Login' :
           'Remove Admin'
         }
         variant={authConfirm.action === 'deactivate' || authConfirm.action === 'remove-admin' ? 'danger' : 'info'}
