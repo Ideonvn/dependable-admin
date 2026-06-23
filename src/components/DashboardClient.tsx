@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, Building2, ClipboardList, Users, FileText } from 'lucide-react';
+import { RefreshCw, Building2, ClipboardList, Users, FileText, Loader2 } from 'lucide-react';
 import { schoolsApi, School } from '@/lib/schools';
 import SchoolCardMain from '@/components/SchoolCardMain';
 import { userSetupService } from '@/lib/userSetupService';
@@ -12,6 +12,12 @@ export default function DashboardClient() {
   const router = useRouter();
   const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
+
+  const navigate = (path: string) => {
+    setNavigatingTo(path);
+    router.push(path);
+  };
 
   useEffect(() => {
     loadSchools();
@@ -52,30 +58,33 @@ export default function DashboardClient() {
 
           {isSuperAdmin && (
             <button
-              onClick={() => router.push('/system/users')}
-              className="flex items-center gap-2 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg hover:opacity-90 transition-all shadow-lg hover:shadow-xl font-medium"
+              onClick={() => navigate('/system/users')}
+              disabled={navigatingTo !== null}
+              className="flex items-center gap-2 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg hover:opacity-90 transition-all shadow-lg hover:shadow-xl font-medium disabled:opacity-60"
             >
-              <Users className="w-5 h-5" />
+              {navigatingTo === '/system/users' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Users className="w-5 h-5" />}
               System Users
             </button>
           )}
-          
+
           {isSuperAdmin && (
             <button
-              onClick={() => router.push('/system/log-config')}
-              className="flex items-center gap-2 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg hover:opacity-90 transition-all shadow-lg hover:shadow-xl font-medium"
+              onClick={() => navigate('/system/log-config')}
+              disabled={navigatingTo !== null}
+              className="flex items-center gap-2 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg hover:opacity-90 transition-all shadow-lg hover:shadow-xl font-medium disabled:opacity-60"
             >
-              <FileText className="w-5 h-5" />
+              {navigatingTo === '/system/log-config' ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileText className="w-5 h-5" />}
               Logging
             </button>
           )}
 
           {isSuperAdmin && (
             <button
-              onClick={() => router.push('/onboarding')}
-              className="flex items-center gap-2 px-6 py-3 bg-gray-700 dark:bg-gray-600 text-white rounded-lg hover:opacity-90 transition-all shadow-lg hover:shadow-xl font-medium"
+              onClick={() => navigate('/onboarding')}
+              disabled={navigatingTo !== null}
+              className="flex items-center gap-2 px-6 py-3 bg-gray-700 dark:bg-gray-600 text-white rounded-lg hover:opacity-90 transition-all shadow-lg hover:shadow-xl font-medium disabled:opacity-60"
             >
-              <ClipboardList className="w-5 h-5" />
+              {navigatingTo === '/onboarding' ? <Loader2 className="w-5 h-5 animate-spin" /> : <ClipboardList className="w-5 h-5" />}
               Onboarding
             </button>
           )}
