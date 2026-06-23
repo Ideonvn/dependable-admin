@@ -31,7 +31,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 dark:bg-[#0F1115]`}
       >
-        <SessionProvider>
+        <SessionProvider refetchOnWindowFocus={false}>
           <AuthInitializer>
             <ThemeProvider
               attribute="class"

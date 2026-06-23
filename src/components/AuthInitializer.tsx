@@ -22,6 +22,8 @@ export default function AuthInitializer({ children }: { children: React.ReactNod
 
   useEffect(() => {
     const initializeAuth = async () => {
+      if (step === 'done') return;
+
       if (status === 'authenticated') {
         try {
           setStep('token');
