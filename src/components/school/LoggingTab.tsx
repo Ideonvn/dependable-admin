@@ -391,8 +391,8 @@ function OptionsPanel({
       addToast('Option added.');
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 409) {
-        setAddError('An option with that name already exists.');
+      if (status === 409 || status === 400) {
+        setAddError('An option with this value already exists.');
       } else {
         setAddError('Failed to add option. Please try again.');
       }
