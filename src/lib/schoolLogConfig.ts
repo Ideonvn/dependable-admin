@@ -60,4 +60,16 @@ export const schoolLogConfigApi = {
 
   deleteOption: (schoolId: string, schoolOptionId: string): Promise<void> =>
     api.delete(`/schools/${schoolId}/log-options/${schoolOptionId}`).then(() => undefined),
+
+  createOverride: (
+    schoolId: string,
+    globalOptionId: string,
+    payload: { is_hidden: boolean }
+  ): Promise<{ id: string; origin_option_id: string; scope_type: string; scope_id: string; is_hidden: boolean }> =>
+    api
+      .post(`/schools/${schoolId}/log-options/${globalOptionId}/override`, payload)
+      .then((r) => r.data),
+
+  deleteOverride: (schoolId: string, globalOptionId: string): Promise<void> =>
+    api.delete(`/schools/${schoolId}/log-options/${globalOptionId}/override`).then(() => undefined),
 };

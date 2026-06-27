@@ -118,29 +118,64 @@ export default function LoggingTab({ schoolId }: { schoolId: string }) {
   // ── Option actions ────────────────────────────────────────────────────────
 
   const hideGlobalOption = async (field: SchoolLogField, option: MergedLogOption) => {
+    if (!option.global_option_id) return;
+    const key = `${field.log_source}:${field.field_name}`;
+    // Optimistic update
+    setOptionsMap((c) => ({
+      ...c,
+      [key]: (c[key] ?? []).map((o) =>
+        o.value === option.value ? { ...o, is_hidden: true } : o
+      ),
+    }));
     try {
-      await schoolLogConfigApi.createOption(schoolId, {
-        log_source: field.log_source,
-        field_name: field.field_name,
-        value: option.value,
-        label: option.label,
-        is_hidden: true,
-      });
+      await schoolLogConfigApi.createOverride(schoolId, option.global_option_id, { is_hidden: true });
       await refreshOptions(field);
       addToast('Option hidden for this school.');
-    } catch {
-      addToast('Failed to hide option.', 'error');
+    } catch (err: unknown) {
+      // Revert
+      setOptionsMap((c) => ({
+        ...c,
+        [key]: (c[key] ?? []).map((o) =>
+          o.value === option.value ? { ...o, is_hidden: false } : o
+        ),
+      }));
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 400) {
+        addToast('An override already exists for this option.', 'error');
+      } else {
+        addToast('Failed to hide option.', 'error');
+      }
     }
   };
 
   const unhideGlobalOption = async (field: SchoolLogField, option: MergedLogOption) => {
-    if (!option.school_option_id) return;
+    if (!option.global_option_id) return;
+    const key = `${field.log_source}:${field.field_name}`;
+    // Optimistic update
+    setOptionsMap((c) => ({
+      ...c,
+      [key]: (c[key] ?? []).map((o) =>
+        o.value === option.value ? { ...o, is_hidden: false, school_option_id: null } : o
+      ),
+    }));
     try {
-      await schoolLogConfigApi.deleteOption(schoolId, option.school_option_id);
+      await schoolLogConfigApi.deleteOverride(schoolId, option.global_option_id);
       await refreshOptions(field);
       addToast('Option restored to default visibility.');
-    } catch {
-      addToast('Failed to unhide option.', 'error');
+    } catch (err: unknown) {
+      // Revert
+      setOptionsMap((c) => ({
+        ...c,
+        [key]: (c[key] ?? []).map((o) =>
+          o.value === option.value ? { ...o, is_hidden: true, school_option_id: option.school_option_id } : o
+        ),
+      }));
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) {
+        addToast('No override found to remove.', 'error');
+      } else {
+        addToast('Failed to unhide option.', 'error');
+      }
     }
   };
 
@@ -540,19 +575,11 @@ function OptionsPanel({
                         </button>
                       </>
                     )}
-                    {/* GLOBAL option: hide / unhide */}
+                    {/* GLOBAL option: hide / unhide / hidden-globally */}
                     {!isSchool && (
                       <>
-                        {opt.is_hidden ? (
-                          <button
-                            onClick={() => onUnhide(opt)}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                            title="Restore default visibility"
-                          >
-                            <Eye className="w-3 h-3" />
-                            Unhide
-                          </button>
-                        ) : (
+                        {/* Visible, no school override → show Hide button */}
+                        {!opt.is_hidden && opt.school_option_id === null && (
                           <button
                             onClick={() => onHide(opt)}
                             className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
@@ -561,6 +588,24 @@ function OptionsPanel({
                             <EyeOff className="w-3 h-3" />
                             Hide
                           </button>
+                        )}
+                        {/* Hidden via school override → show Unhide button */}
+                        {opt.is_hidden && opt.school_option_id !== null && (
+                          <button
+                            onClick={() => onUnhide(opt)}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                            title="Restore default visibility"
+                          >
+                            <Eye className="w-3 h-3" />
+                            Unhide
+                          </button>
+                        )}
+                        {/* Hidden globally by admin, no override possible */}
+                        {opt.is_hidden && opt.school_option_id === null && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-400 dark:text-gray-600 border border-gray-200 dark:border-gray-800 rounded cursor-not-allowed">
+                            <EyeOff className="w-3 h-3" />
+                            Hidden globally
+                          </span>
                         )}
                       </>
                     )}
