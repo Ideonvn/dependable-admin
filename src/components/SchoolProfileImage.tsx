@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Users } from 'lucide-react';
 import { tokenService } from '@/lib/tokenService';
+import { fetchImageCached } from '@/lib/imageCache';
 
 interface SchoolProfileImageProps {
   schoolId: string;
@@ -40,21 +41,10 @@ export default function SchoolProfileImage({
         }
 
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const response = await fetch(
+        const url = await fetchImageCached(
           `${apiUrl}/schools/${schoolId}/profile/image/${imageFilename}`,
-          {
-            headers: {
-              Authorization: `Bearer ${tokenData.access_token}`,
-            },
-          }
+          tokenData.access_token
         );
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch image');
-        }
-
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
         setImageUrl(url);
       } catch (err) {
         console.error('Error fetching school profile image:', err);
