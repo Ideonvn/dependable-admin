@@ -72,7 +72,7 @@ export default function SchoolDetailsTab({ school, onUpdate }: SchoolDetailsTabP
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">School Profile</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Update the school's name and profile picture
+            Update the school&apos;s name and profile picture
           </p>
         </div>
       </div>

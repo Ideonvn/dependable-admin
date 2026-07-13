@@ -47,7 +47,7 @@ export default function EditableTable({ records, onUpdate, onDelete, onResetStat
 
   // Filter and sort records
   const filteredRecords = useMemo(() => {
-    let filtered = records.filter(record => {
+    const filtered = records.filter(record => {
       // Search filter
       if (filters.search) {
         const search = filters.search.toLowerCase();
@@ -279,7 +279,7 @@ export default function EditableTable({ records, onUpdate, onDelete, onResetStat
                       <td className="px-4 py-3">
                         <select
                           value={editData.gender || ''}
-                          onChange={(e) => setEditData({ ...editData, gender: e.target.value as any })}
+                          onChange={(e) => setEditData({ ...editData, gender: e.target.value as SchoolOnboardingRecord['gender'] })}
                           className="w-full px-2 py-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded text-sm"
                         >
                           <option value="male">Male</option>

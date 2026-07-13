@@ -326,7 +326,7 @@ export default function EnrollmentsTab({ schoolId }: EnrollmentsTabProps) {
         <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
         <div className="text-sm text-blue-800 dark:text-blue-300">
           <strong>Tip:</strong> Click to select students (Ctrl/Cmd + Click for multiple), then drag them to a different classroom. 
-          Changes are only saved when you click the "Save Changes" button.
+          Changes are only saved when you click the &quot;Save Changes&quot; button.
         </div>
       </div>
 
