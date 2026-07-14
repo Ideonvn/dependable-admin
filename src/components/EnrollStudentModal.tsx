@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, AlertCircle } from 'lucide-react';
+import posthog from 'posthog-js';
 import { schoolsApi, Classroom } from '@/lib/schools';
 
 interface EnrollStudentModalProps {
@@ -156,6 +157,7 @@ export default function EnrollStudentModal({
         contactLastName: '',
         contactRole: 'FATHER',
       });
+      posthog.capture('student_enrolled', { school_id: schoolId });
       onSuccess();
       onClose();
     } catch (err) {

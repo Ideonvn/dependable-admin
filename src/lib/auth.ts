@@ -3,6 +3,7 @@ import Google from "next-auth/providers/google"
 import Credentials from "next-auth/providers/credentials"
 import axios from "axios"
 import type { BackendTokenData } from "@/types/next-auth"
+import { getPostHogClient } from "@/lib/posthog-server"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
@@ -58,6 +59,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   pages: {
     signIn: '/auth/signin',
+  },
+  events: {
+    async signIn({ user, account }) {
+      const posthog = getPostHogClient();
+      if (!posthog || !user.email) return;
+      posthog.capture({
+        distinctId: user.email,
+        event: 'user_signed_in',
+        properties: {
+          provider: account?.provider ?? 'unknown',
+        },
+      });
+      await posthog.flush();
+    },
   },
   callbacks: {
     async jwt({ token, account, user }) {

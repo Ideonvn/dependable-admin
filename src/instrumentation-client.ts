@@ -3,6 +3,7 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
+import posthog from "posthog-js";
 
 Sentry.init({
   dsn: "https://228d93995c7dada8433f8a6cc000a553@o4509368092983296.ingest.de.sentry.io/4510942674419792",
@@ -16,5 +17,15 @@ Sentry.init({
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
   sendDefaultPii: true,
 });
+
+if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
+    api_host: "/ingest",
+    ui_host: "https://eu.posthog.com",
+    defaults: "2026-01-30",
+    capture_exceptions: true,
+    debug: process.env.NODE_ENV === "development",
+  });
+}
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

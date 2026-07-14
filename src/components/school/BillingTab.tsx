@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Receipt, Download, Plus, Calendar, DollarSign, AlertCircle, FileText, Settings, Save, X, MapPin, Mail, Phone, ChevronDown } from 'lucide-react';
+import posthog from 'posthog-js';
 import { billingApi, Invoice, BillingConfig, BillingDetails, SchoolPlan } from '@/lib/billing';
 import { userSetupService } from '@/lib/userSetupService';
 
@@ -193,6 +194,7 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
       });
       setSchoolPlan(updated);
       setShowPlanForm(false);
+      posthog.capture('billing_plan_updated', { school_id: schoolId, plan_type: planForm.plan_type });
       addToast({ title: 'Success', message: 'Billing plan updated successfully!', variant: 'success' });
     } catch (error) {
       console.error('Error updating plan:', error);
@@ -213,6 +215,11 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
       });
       setInvoices([newInvoice, ...invoices]);
       setShowGenerateForm(false);
+      posthog.capture('invoice_generated', {
+        school_id: schoolId,
+        billing_month: formData.billing_month,
+        billing_year: formData.billing_year,
+      });
       setFormData({
         billing_month: new Date().getMonth() + 1,
         billing_year: new Date().getFullYear(),

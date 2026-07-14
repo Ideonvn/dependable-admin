@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { Settings, LogOut, User } from 'lucide-react';
+import posthog from 'posthog-js';
 import { tokenService } from '../lib/tokenService';
 import { setGoogleIdToken } from '../lib/api';
 import { userSetupService } from '../lib/userSetupService';
@@ -32,6 +33,8 @@ export default function SettingsMenu() {
   }, [isOpen]);
 
   const handleSignOut = async () => {
+    posthog.capture('user_signed_out');
+    posthog.reset();
     try {
       await signOut({ redirect: false });
     } finally {

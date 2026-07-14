@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Upload, Building2, Image as ImageIcon } from 'lucide-react';
+import posthog from 'posthog-js';
 import { schoolOnboardingApi } from '@/lib/schoolOnboarding';
 import { userSetupService } from '@/lib/userSetupService';
 
@@ -65,7 +66,12 @@ export default function SchoolOnboardingCreate() {
         schoolPicture,
         csvFile
       );
-      
+
+      posthog.capture('onboarding_created', {
+        onboarding_id: onboarding.id,
+        school_name: schoolName,
+      });
+
       // Navigate to the edit page with the onboarding data
       router.push(`/onboarding/${onboarding.id}`);
     } catch (err) {

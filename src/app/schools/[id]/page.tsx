@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import posthog from 'posthog-js';
 import { ArrowLeft, Building2, Users, BookOpen, UserCog, ClipboardCheck, Receipt, Calendar, CalendarDays, Bell, Download, RefreshCw, Loader2, FileText } from 'lucide-react';
 import { schoolsApi, School, SchoolReportResponse } from '@/lib/schools';
 import SchoolDetailsTab from '@/components/school/SchoolDetailsTab';
@@ -42,7 +43,8 @@ export default function SchoolDetailPage() {
   // Update hash when tab changes
   useEffect(() => {
     window.location.hash = activeTab;
-  }, [activeTab]);
+    posthog.capture('school_tab_viewed', { school_id: schoolId, tab: activeTab });
+  }, [activeTab, schoolId]);
 
   useEffect(() => {
     loadSchool();

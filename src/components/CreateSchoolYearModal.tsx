@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, AlertCircle } from 'lucide-react';
+import posthog from 'posthog-js';
 import { schoolsApi } from '@/lib/schools';
 
 interface CreateSchoolYearModalProps {
@@ -53,6 +54,7 @@ export default function CreateSchoolYearModal({
       setStartsOn(`${currentYear}-01-01`);
       setEndsOn(`${currentYear}-12-31`);
       setError(null);
+      posthog.capture('school_year_created', { school_id: schoolId });
       onSuccess();
       onClose();
     } catch (err) {

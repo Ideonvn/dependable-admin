@@ -9,6 +9,7 @@ import {
   SchoolOnboardingRecord,
   ClassSummary,
 } from '@/lib/schoolOnboarding';
+import posthog from 'posthog-js';
 import { onboardingApi, SchoolWithStats } from '@/lib/schools';
 import EditableTable from '@/components/EditableTable';
 import ClassSummaryTable from '@/components/ClassSummaryTable';
@@ -276,6 +277,7 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
     setActionLoading('submit');
     try {
       await schoolOnboardingApi.submitRecords(onboarding.id);
+      posthog.capture('onboarding_submitted', { onboarding_id: onboarding.id });
       setAlertDialog({
         isOpen: true,
         title: 'Success',

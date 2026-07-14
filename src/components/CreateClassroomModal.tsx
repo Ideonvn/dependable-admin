@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, AlertCircle, Upload } from 'lucide-react';
+import posthog from 'posthog-js';
 import { schoolsApi, Membership } from '@/lib/schools';
 
 interface CreateClassroomModalProps {
@@ -94,6 +95,7 @@ export default function CreateClassroomModal({
       setImagePreview(null);
       setError(null);
 
+      posthog.capture('classroom_created', { school_id: schoolId });
       onSuccess();
       onClose();
     } catch (err) {

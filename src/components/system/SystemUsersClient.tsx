@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, ArrowLeft, CheckCircle, Key, LogIn, Pencil, RefreshCw, Search, ShieldAlert, Trash2, UserCheck, UserX, Users, X } from 'lucide-react';
+import posthog from 'posthog-js';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { systemUsersApi, SystemUser } from '@/lib/users';
 
@@ -354,6 +355,11 @@ export default function SystemUsersClient() {
           });
           break;
       }
+
+      posthog.capture('system_user_action', {
+        action: confirmAction.action,
+        user_count: selectedUsers.length,
+      });
 
       // Reload users to get updated data
       await loadUsers(currentPage);

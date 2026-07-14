@@ -2,6 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import { useEffect, useState } from 'react';
+import posthog from 'posthog-js';
 import { setGoogleIdToken } from '@/lib/api';
 import { tokenService } from '@/lib/tokenService';
 import { userSetupService } from '@/lib/userSetupService';
@@ -49,7 +50,13 @@ export default function AuthInitializer({ children }: { children: React.ReactNod
 
           // Fetch admin setup data after token is ready
           setStep('setup');
-          await userSetupService.fetchAndStore();
+          const setupData = await userSetupService.fetchAndStore();
+
+          posthog.identify(setupData.email, {
+            email: setupData.email,
+            name: `${setupData.first_name} ${setupData.last_name}`.trim(),
+            is_admin: setupData.is_admin,
+          });
 
           setStep('done');
         } catch (error: unknown) {
@@ -60,6 +67,8 @@ export default function AuthInitializer({ children }: { children: React.ReactNod
 
           if (isAuthError) {
             console.error('Auth token expired, signing out:', message);
+            posthog.capture('session_expired', { reason: message });
+            posthog.reset();
             tokenService.clearTokenData();
             userSetupService.clearSetupData();
             setGoogleIdToken(null);

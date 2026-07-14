@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, AlertCircle } from 'lucide-react';
+import posthog from 'posthog-js';
 import { schoolsApi } from '@/lib/schools';
 
 interface AddMemberModalProps {
@@ -47,6 +48,8 @@ export default function AddMemberModal({
         email: email.trim(),
         role,
       });
+
+      posthog.capture('member_added', { school_id: schoolId, role });
 
       setEmail('');
       setRole('TEACHER');
