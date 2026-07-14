@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { schoolsApi, StudentDetails, StudentContact, StudentEnrollment, AttendanceCalendarMonth, AttendanceBodyCheck, StudentReport } from '@/lib/schools';
-import { AlertCircle, Image as ImageIcon, Loader2, Save, Upload, Users, GraduationCap, Contact, ChevronDown, ChevronRight, Check, X, Plus, Calendar, ChevronLeft, FileText, Trash2, Download } from 'lucide-react';
+import { AlertCircle, Loader2, Save, Upload, Users, GraduationCap, Contact, ChevronDown, ChevronRight, Check, X, Plus, Calendar, ChevronLeft, FileText, Trash2, Download } from 'lucide-react';
 import ClassroomProfileImage from '../ClassroomProfileImage';
 import ContactProfileImage from '../ContactProfileImage';
 import StudentProfileImage from '../StudentProfileImage';
@@ -453,17 +453,15 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
             {imagePreview ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={imagePreview} alt={fullName || 'Student'} className="w-full h-full object-cover" />
-            ) : details?.image_filename ? (
+            ) : (
               <StudentProfileImage
                 schoolId={schoolId}
                 studentId={studentId}
-                imageFilename={details.image_filename}
+                imageFilename={details?.image_filename ?? null}
                 alt={fullName || 'Student'}
                 className="w-full h-full object-cover"
                 fallbackClassName="w-full h-full flex items-center justify-center"
               />
-            ) : (
-              <ImageIcon className="w-6 h-6" />
             )}
           </div>
           <div>

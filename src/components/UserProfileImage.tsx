@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { User } from 'lucide-react';
 import { tokenService } from '@/lib/tokenService';
 import { fetchImageCached } from '@/lib/imageCache';
+import { getInitials } from '@/lib/initials';
 
 interface UserProfileImageProps {
   imageFilename: string | null;
@@ -72,7 +72,7 @@ export default function UserProfileImage({
   if (error || !imageUrl) {
     return (
       <div className={fallbackClassName}>
-        <User className="w-5 h-5 text-gray-400 dark:text-gray-600" />
+        <span className="text-sm font-semibold text-white select-none">{getInitials(alt)}</span>
       </div>
     );
   }

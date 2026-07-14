@@ -42,26 +42,18 @@ export default function SettingsMenu() {
     }
   };
 
-  const initial = displayName?.[0]?.toUpperCase() || 'U';
-
   return (
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
-        {setupData?.image_filename ? (
-          <UserProfileImage
-            imageFilename={setupData.image_filename}
-            alt={displayName}
-            className="w-8 h-8 rounded-full object-cover"
-            fallbackClassName="w-8 h-8 rounded-full bg-gradient-to-br from-[#1A1A6D] to-[#87CEFA] dark:from-[#20B2AA] dark:to-[#4682B4] flex items-center justify-center text-white font-medium"
-          />
-        ) : (
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1A1A6D] to-[#87CEFA] dark:from-[#20B2AA] dark:to-[#4682B4] flex items-center justify-center text-white font-medium text-sm">
-            {initial}
-          </div>
-        )}
+        <UserProfileImage
+          imageFilename={setupData?.image_filename ?? null}
+          alt={displayName}
+          className="w-8 h-8 rounded-full object-cover"
+          fallbackClassName="w-8 h-8 rounded-full bg-gradient-to-br from-[#1A1A6D] to-[#87CEFA] dark:from-[#20B2AA] dark:to-[#4682B4] flex items-center justify-center text-white font-medium"
+        />
         <div className="hidden sm:block text-left">
           <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{displayName}</p>
           <p className="text-xs text-gray-500 dark:text-gray-400">{displayEmail}</p>

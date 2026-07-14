@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AlertCircle, Upload, User } from 'lucide-react';
+import { AlertCircle, Upload } from 'lucide-react';
 import { meApi, MeUser } from '@/lib/users';
 import { userSetupService } from '@/lib/userSetupService';
 import UserProfileImage from '@/components/UserProfileImage';
@@ -136,15 +136,13 @@ export default function ProfileClient() {
               {imagePreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-              ) : user?.image_filename ? (
+              ) : (
                 <UserProfileImage
-                  imageFilename={user.image_filename}
-                  alt={`${user.first_name} ${user.last_name}`}
+                  imageFilename={user?.image_filename ?? null}
+                  alt={`${user?.first_name ?? ''} ${user?.last_name ?? ''}`}
                   className="w-full h-full object-cover"
                   fallbackClassName="w-full h-full flex items-center justify-center"
                 />
-              ) : (
-                <User className="w-8 h-8 text-white" />
               )}
             </div>
 
