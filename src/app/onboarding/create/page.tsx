@@ -161,7 +161,14 @@ export default function SchoolOnboardingCreate() {
                   />
                 </label>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Required columns: first_name, last_name, gender, date_of_birth, primary_name, primary_email, class_name
+                  Required columns: first_name, last_name, primary_name, primary_email, class_name. Optional: gender, date_of_birth (YYYY-MM-DD).{' '}
+                  <a
+                    href="/sample-onboarding.csv"
+                    download
+                    className="text-[#20B2AA] hover:underline"
+                  >
+                    Download sample CSV
+                  </a>
                 </p>
               </div>
             </div>

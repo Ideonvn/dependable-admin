@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { schoolsApi, StudentDetails, StudentContact, StudentEnrollment, AttendanceCalendarMonth, AttendanceBodyCheck, StudentReport } from '@/lib/schools';
+import { getData as getCountryData } from 'country-list';
 import { AlertCircle, Loader2, Save, Upload, Users, GraduationCap, Contact, ChevronDown, ChevronRight, Check, X, Plus, Calendar, ChevronLeft, FileText, Trash2, Download } from 'lucide-react';
 import ClassroomProfileImage from '../ClassroomProfileImage';
 import ContactProfileImage from '../ContactProfileImage';
@@ -109,6 +110,11 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
     notes: '',
     image_filename: '',
   });
+
+  const countryOptions = useMemo(
+    () => [...getCountryData()].sort((a, b) => a.name.localeCompare(b.name)),
+    []
+  );
 
   const addToast = (toast: { title?: string; message: string; variant?: 'success' | 'error' | 'info' }) => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -1348,13 +1354,21 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       ID Country
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={editContactFormData.id_country}
                       onChange={(e) => setEditContactFormData({ ...editContactFormData, id_country: e.target.value })}
-                      placeholder="e.g., ZA"
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                    />
+                    >
+                      <option value="">Select country</option>
+                      {editContactFormData.id_country && !countryOptions.some((country) => country.code === editContactFormData.id_country) && (
+                        <option value={editContactFormData.id_country}>{editContactFormData.id_country}</option>
+                      )}
+                      {countryOptions.map((country) => (
+                        <option key={country.code} value={country.code}>
+                          {country.name} ({country.code})
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1588,13 +1602,18 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       ID Country
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={contactFormData.id_country}
                       onChange={(e) => setContactFormData({ ...contactFormData, id_country: e.target.value })}
-                      placeholder="e.g., ZA"
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                    />
+                    >
+                      <option value="">Select country</option>
+                      {countryOptions.map((country) => (
+                        <option key={country.code} value={country.code}>
+                          {country.name} ({country.code})
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

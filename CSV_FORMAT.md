@@ -1,66 +1,35 @@
-# CSV Import Format
+# School Onboarding CSV Format
 
-This document describes the expected CSV format for the Dependable admin interface.
+This document describes the CSV format expected by the school onboarding import on the New School Onboarding page (`/onboarding/create`).
+
+A downloadable sample lives at [`public/sample-onboarding.csv`](public/sample-onboarding.csv) and is linked from the upload form.
 
 ## Required Columns
 
-The CSV file should include the following columns (order doesn't matter):
+Column order doesn't matter, but the first row must contain these headers:
 
-- `email` - Email address of the invite recipient (required)
-- `name` - Full name of the recipient (required)
+- `first_name` — Student's first name
+- `last_name` — Student's last name
+- `primary_name` — Full name of the primary contact (parent/guardian)
+- `primary_email` — Email address of the primary contact
+- `class_name` — Name of the class the student will be enrolled in
 
 ## Optional Columns
 
-You can include additional columns depending on your backend implementation:
+- `gender` — `male`, `female`, or `other` (case-insensitive)
+- `date_of_birth` — Preferably `YYYY-MM-DD`; `DD/MM/YYYY`, `MM/DD/YYYY`, `DD-MM-YYYY`, and `YYYY/MM/DD` are also accepted
 
-- `phone` - Phone number
-- `organization` - Organization name
-- `role` - User role
-- Any other custom fields your backend supports
-
-## Example CSV
+## Example
 
 ```csv
-email,name,organization,role
-john.doe@example.com,John Doe,Acme Corp,Manager
-jane.smith@example.com,Jane Smith,Tech Inc,Developer
-bob.wilson@example.com,Bob Wilson,Startup LLC,CEO
+first_name,last_name,gender,date_of_birth,primary_name,primary_email,class_name
+Thabo,Nkosi,male,2018-03-14,Lindiwe Nkosi,lindiwe.nkosi@example.com,Grade R A
+Emma,van der Merwe,female,2017-11-02,Pieter van der Merwe,pieter.vdm@example.com,Grade 1 B
 ```
 
-## Validation Rules
+## Notes
 
-The backend will validate:
-
-1. **Email format** - Must be a valid email address
-2. **Required fields** - email and name must not be empty
-3. **Duplicates** - May check for duplicate emails within the batch
-4. **Custom validations** - Any business-specific rules
-
-## Error Handling
-
-If validation issues are found:
-
-- The batch will still be created
-- Issues will be displayed in the validation results
-- Only valid rows will generate invites
-- You can review and fix issues before sending invites
-
-## Tips
-
-- **Headers**: The first row must contain column headers
-- **Encoding**: Use UTF-8 encoding
-- **Line endings**: Both Unix (LF) and Windows (CRLF) are supported
-- **Commas in data**: Enclose fields containing commas in quotes
-- **Empty rows**: Will be skipped automatically
-
-## Example with Special Characters
-
-```csv
-email,name,organization
-john.doe@example.com,"Doe, John",Acme Corp
-jane@example.com,"Jane ""Jay"" Smith","Tech, Inc."
-```
-
-## Testing
-
-You can create a test CSV with a few rows to verify the upload and validation process before importing large batches.
+- **Encoding**: Must be UTF-8; other encodings are rejected.
+- **Emails**: Normalized to lowercase on import.
+- **Commas in data**: Enclose fields containing commas in double quotes.
+- **Validation**: The backend rejects the file if required columns are missing; per-record issues surface on the onboarding review page after import.
