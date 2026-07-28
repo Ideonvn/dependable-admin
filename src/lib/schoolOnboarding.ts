@@ -80,6 +80,15 @@ const serializeOnboardingGender = (value: unknown): 'MALE' | 'FEMALE' | null => 
   return null;
 };
 
+const serializeOnboardingDateOfBirth = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized === '' ? null : normalized;
+};
+
 export const schoolOnboardingApi = {
   // Create school and import CSV
   createSchoolOnboarding: async (
@@ -133,6 +142,12 @@ export const schoolOnboardingApi = {
       payload.gender = serializeOnboardingGender(updates.gender);
     }
 
+    if ('date_of_birth' in updates) {
+      payload.date_of_birth = updates.date_of_birth === undefined
+        ? undefined
+        : serializeOnboardingDateOfBirth(updates.date_of_birth);
+    }
+
     const response = await apiClient.patch(
       `/admin/onboarding/schools/${onboardingId}/records/${recordId}`,
       Object.fromEntries(Object.entries(payload).filter(([, v]) => v !== undefined))
@@ -166,6 +181,7 @@ export const schoolOnboardingApi = {
     const payload: any = {
       ...record,
       gender: serializeOnboardingGender(record.gender),
+      date_of_birth: serializeOnboardingDateOfBirth(record.date_of_birth),
     };
 
     const response = await apiClient.post(
