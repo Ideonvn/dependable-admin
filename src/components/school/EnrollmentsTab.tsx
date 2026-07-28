@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ClipboardCheck, Search, Save, User, Calendar, AlertCircle } from 'lucide-react';
-import { schoolsApi, EnrolledStudent } from '@/lib/schools';
+import { schoolsApi, StudentGender } from '@/lib/schools';
 
 interface EnrollmentsTabProps {
   schoolId: string;
@@ -11,7 +11,7 @@ interface EnrollmentsTabProps {
 interface StudentEnrollment {
   student_id: string;
   full_name: string;
-  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  gender: StudentGender;
   classroom_id: string | null;
   started_at: string | null;
   ended_at: string | null;

@@ -5,6 +5,8 @@ import { X, AlertCircle } from 'lucide-react';
 import posthog from 'posthog-js';
 import { schoolsApi, Classroom } from '@/lib/schools';
 
+type RequiredStudentGender = 'MALE' | 'FEMALE';
+
 interface EnrollStudentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -21,7 +23,7 @@ interface FormData {
   // Dependant details
   firstName: string;
   lastName: string;
-  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  gender: RequiredStudentGender;
   dateOfBirth: string;
   weightAtBirth: number | undefined;
   lengthAtBirth: number | undefined;
@@ -85,6 +87,15 @@ export default function EnrollStudentModal({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+
+    if (name === 'gender') {
+      setFormData(prev => ({
+        ...prev,
+        gender: value as RequiredStudentGender,
+      }));
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -301,12 +312,12 @@ export default function EnrollStudentModal({
                       name="gender"
                       value={formData.gender}
                       onChange={handleChange}
+                      required
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       disabled={submitting}
                     >
                       <option value="MALE">Male</option>
                       <option value="FEMALE">Female</option>
-                      <option value="OTHER">Other</option>
                     </select>
                   </div>
 

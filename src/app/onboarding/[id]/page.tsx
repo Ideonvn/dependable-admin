@@ -118,7 +118,7 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
       const newRecord = await schoolOnboardingApi.createRecord(onboarding.id, {
         first_name: updates.first_name || '',
         last_name: updates.last_name || '',
-        gender: updates.gender || 'male',
+        gender: updates.gender ?? null,
         date_of_birth: updates.date_of_birth || '',
         primary_name: updates.primary_name || '',
         primary_email: updates.primary_email || '',
@@ -161,7 +161,7 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
       id: tempId,
       first_name: '',
       last_name: '',
-      gender: 'male',
+      gender: null,
       date_of_birth: '',
       primary_name: '',
       primary_email: '',

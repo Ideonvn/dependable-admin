@@ -73,7 +73,7 @@ export interface Student {
   admitted_on: string | null;
   status: 'active' | 'left' | 'graduated';
   full_name: string;
-  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  gender: StudentGender;
   image_filename: string | null;
   presence_status: 'in' | 'out' | 'unknown';
   presence_changed_at: string | null;
@@ -94,7 +94,7 @@ export interface StudentDetails {
   date_of_birth: string; // YYYY-MM-DD
   weight_at_birth: number | null;
   length_at_birth: number | null;
-  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  gender: StudentGender;
   image_filename: string | null;
 }
 
@@ -238,7 +238,7 @@ export interface ClassroomTeacherAssignment {
 export interface EnrolledStudent {
   student_id: string;
   full_name: string;
-  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  gender: StudentGender;
   started_at: string;
   ended_at: string | null;
 }
@@ -279,6 +279,25 @@ export interface SchoolReportResponse {
   ready: boolean;
 }
 
+export type StudentGender = 'MALE' | 'FEMALE' | null;
+
+const normalizeStudentGender = (value: unknown): StudentGender => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim().toUpperCase();
+  if (normalized === 'MALE') {
+    return 'MALE';
+  }
+
+  if (normalized === 'FEMALE') {
+    return 'FEMALE';
+  }
+
+  return null;
+};
+
 // API for schools
 export const schoolsApi = {
   // Get all schools (main view with students overview)
@@ -297,13 +316,13 @@ export const schoolsApi = {
         admitted_on: string | null;
         status: 'active' | 'left' | 'graduated';
         full_name: string;
-        gender: 'MALE' | 'FEMALE' | 'OTHER';
+        gender: string | null;
         image_filename: string | null;
         dependant: {
           id: string;
           first_name: string;
           last_name: string;
-          gender: 'MALE' | 'FEMALE' | 'OTHER';
+          gender: string | null;
           date_of_birth: string;
           weight_at_birth: number;
           length_at_birth: number;
@@ -324,7 +343,7 @@ export const schoolsApi = {
         date_of_birth: data.dependant.date_of_birth,
         weight_at_birth: data.dependant.weight_at_birth,
         length_at_birth: data.dependant.length_at_birth,
-        gender: data.dependant.gender,
+        gender: normalizeStudentGender(data.dependant.gender),
         image_filename: data.dependant.image_filename,
       };
     } catch (error) {
@@ -517,8 +536,14 @@ export const schoolsApi = {
   // Get students for a specific school
   getStudents: async (schoolId: string, includeInactive: boolean = false): Promise<Student[]> => {
     try {
-      const response = await apiClient.get<Student[]>(`/schools/${schoolId}/students?include_inactive=${includeInactive}`);
-      return response.data;
+      const response = await apiClient.get<Array<Omit<Student, 'gender'> & { gender: string | null }>>(
+        `/schools/${schoolId}/students?include_inactive=${includeInactive}`
+      );
+
+      return response.data.map((student) => ({
+        ...student,
+        gender: normalizeStudentGender(student.gender),
+      }));
     } catch (error) {
       console.error('Error fetching students:', error);
       return [];
@@ -599,8 +624,28 @@ export const schoolsApi = {
   // Get classroom enrollments for a specific school
   getEnrollments: async (schoolId: string): Promise<EnrollmentsResponse> => {
     try {
-      const response = await apiClient.get<EnrollmentsResponse>(`/schools/${schoolId}/classrooms/enrollments`);
-      return response.data;
+      const response = await apiClient.get<{
+        classrooms: Array<{
+          id: string;
+          name: string;
+          students: Array<Omit<EnrolledStudent, 'gender'> & { gender: string | null }>;
+        }>;
+        unassigned_students: Array<Omit<EnrolledStudent, 'gender'> & { gender: string | null }>;
+      }>(`/schools/${schoolId}/classrooms/enrollments`);
+
+      return {
+        classrooms: response.data.classrooms.map((classroom) => ({
+          ...classroom,
+          students: classroom.students.map((student) => ({
+            ...student,
+            gender: normalizeStudentGender(student.gender),
+          })),
+        })),
+        unassigned_students: response.data.unassigned_students.map((student) => ({
+          ...student,
+          gender: normalizeStudentGender(student.gender),
+        })),
+      };
     } catch (error) {
       console.error('Error fetching enrollments:', error);
       return { classrooms: [], unassigned_students: [] };
@@ -614,7 +659,7 @@ export const schoolsApi = {
     data: {
       first_name: string;
       last_name: string;
-      gender: 'MALE' | 'FEMALE' | 'OTHER';
+      gender: StudentGender;
       date_of_birth: string;
       weight_at_birth?: number | null;
       length_at_birth?: number | null;
@@ -637,11 +682,15 @@ export const schoolsApi = {
       };
     }
   ): Promise<Student> => {
-    const response = await apiClient.post<Student>(
+    const response = await apiClient.post<Omit<Student, 'gender'> & { gender: string | null }>(
       `/schools/${schoolId}/classrooms/${classroomId}/enrollments`,
       data
     );
-    return response.data;
+
+    return {
+      ...response.data,
+      gender: normalizeStudentGender(response.data.gender),
+    };
   },
 
   // Update student enrollments
@@ -899,7 +948,7 @@ export const onboardingApi = {
       // Map API record shape to local SchoolOnboardingRecord
       return response.data.map((r) => {
         // Map gender
-        let gender: SchoolOnboardingRecord['gender'] = 'other';
+        let gender: SchoolOnboardingRecord['gender'] = null;
         if (typeof r.gender === 'string') {
           const g = r.gender.toLowerCase();
           if (g === 'male') gender = 'male';
@@ -957,7 +1006,7 @@ export const onboardingApi = {
       const r = response.data;
 
       // Map gender
-      let gender: SchoolOnboardingRecord['gender'] = 'other';
+      let gender: SchoolOnboardingRecord['gender'] = null;
       if (typeof r.gender === 'string') {
         const g = r.gender.toLowerCase();
         if (g === 'male') gender = 'male';

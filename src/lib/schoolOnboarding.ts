@@ -3,7 +3,7 @@ export interface SchoolOnboardingRecord {
   id: string;
   first_name: string;
   last_name: string;
-  gender: 'male' | 'female' | 'other';
+  gender: 'male' | 'female' | null;
   date_of_birth: string;
   primary_name: string;
   primary_email: string;
@@ -49,6 +49,36 @@ export interface CreateClassResult {
 
 // Mock API for school onboarding
 import apiClient from '@/lib/api';
+
+const normalizeOnboardingGender = (value: unknown): SchoolOnboardingRecord['gender'] => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'male') {
+    return 'male';
+  }
+
+  if (normalized === 'female') {
+    return 'female';
+  }
+
+  return null;
+};
+
+const serializeOnboardingGender = (value: unknown): 'MALE' | 'FEMALE' | null => {
+  const normalized = normalizeOnboardingGender(value);
+  if (normalized === 'male') {
+    return 'MALE';
+  }
+
+  if (normalized === 'female') {
+    return 'FEMALE';
+  }
+
+  return null;
+};
 
 export const schoolOnboardingApi = {
   // Create school and import CSV
@@ -97,8 +127,11 @@ export const schoolOnboardingApi = {
   ): Promise<SchoolOnboardingRecord> => {
     const payload: any = {
       ...updates,
-      gender: updates.gender ? updates.gender.toString().toUpperCase() : undefined,
     };
+
+    if ('gender' in updates) {
+      payload.gender = serializeOnboardingGender(updates.gender);
+    }
 
     const response = await apiClient.patch(
       `/admin/onboarding/schools/${onboardingId}/records/${recordId}`,
@@ -110,7 +143,7 @@ export const schoolOnboardingApi = {
       id: data.id,
       first_name: data.first_name,
       last_name: data.last_name,
-      gender: (data.gender || '').toString().toLowerCase() as 'male' | 'female' | 'other',
+      gender: normalizeOnboardingGender(data.gender),
       date_of_birth: data.date_of_birth || '',
       primary_name: data.primary_name || '',
       primary_email: data.primary_email || '',
@@ -132,7 +165,7 @@ export const schoolOnboardingApi = {
   ): Promise<SchoolOnboardingRecord> => {
     const payload: any = {
       ...record,
-      gender: record.gender ? record.gender.toString().toUpperCase() : undefined,
+      gender: serializeOnboardingGender(record.gender),
     };
 
     const response = await apiClient.post(
@@ -145,7 +178,7 @@ export const schoolOnboardingApi = {
       id: data.id,
       first_name: data.first_name,
       last_name: data.last_name,
-      gender: (data.gender || '').toString().toLowerCase() as 'male' | 'female' | 'other',
+      gender: normalizeOnboardingGender(data.gender),
       date_of_birth: data.date_of_birth || '',
       primary_name: data.primary_name || '',
       primary_email: data.primary_email || '',

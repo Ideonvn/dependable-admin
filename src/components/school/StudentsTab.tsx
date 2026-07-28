@@ -87,6 +87,18 @@ export default function StudentsTab({ schoolId }: StudentsTabProps) {
     }
   };
 
+  const getGenderLabel = (gender: Student['gender']) => {
+    if (gender === 'MALE') {
+      return 'Male';
+    }
+
+    if (gender === 'FEMALE') {
+      return 'Female';
+    }
+
+    return 'Unknown';
+  };
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -171,7 +183,7 @@ export default function StudentsTab({ schoolId }: StudentsTabProps) {
                     </div>
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">
-                    {student.gender.charAt(0) + student.gender.slice(1).toLowerCase()}
+                    {getGenderLabel(student.gender)}
                   </td>
                   <td className="py-3 px-4">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEnrollmentStatusColor(student.status)}`}>

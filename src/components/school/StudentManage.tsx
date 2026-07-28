@@ -14,6 +14,7 @@ interface StudentManageProps {
 
 type TabKey = 'details' | 'contacts' | 'enrollments' | 'attendance' | 'reports';
 type StudentStatus = 'active' | 'left' | 'graduated';
+type RequiredStudentGender = 'MALE' | 'FEMALE';
 
 // ISO 3166-1 alpha-2 codes; names are resolved at runtime.
 const COUNTRY_CODES = [
@@ -90,7 +91,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
   const [externalRef, setExternalRef] = useState('');
   const [admittedOn, setAdmittedOn] = useState('');
   const [studentStatus, setStudentStatus] = useState<StudentStatus>('active');
-  const [gender, setGender] = useState<'MALE' | 'FEMALE' | 'OTHER'>('OTHER');
+  const [gender, setGender] = useState<RequiredStudentGender>('MALE');
   const [weightAtBirth, setWeightAtBirth] = useState<string>('');
   const [lengthAtBirth, setLengthAtBirth] = useState<string>('');
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -179,7 +180,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
         setExternalRef(d.external_ref ?? '');
         setAdmittedOn(d.admitted_on ?? '');
         setStudentStatus(d.status);
-        setGender(d.gender);
+        setGender(d.gender === 'FEMALE' ? 'FEMALE' : 'MALE');
         setWeightAtBirth(d.weight_at_birth?.toString() ?? '');
         setLengthAtBirth(d.length_at_birth?.toString() ?? '');
       } catch (err) {
@@ -573,15 +574,20 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Gender</label>
-                <select value={gender} onChange={(e) => setGender(e.target.value as 'MALE' | 'FEMALE' | 'OTHER')} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Gender <span className="text-red-500">*</span></label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value as RequiredStudentGender)}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                >
                   <option value="FEMALE">Female</option>
                   <option value="MALE">Male</option>
-                  <option value="OTHER">Other</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Weight at Birth (kg)</label>
+                      required
                 <input type="number" step="0.01" value={weightAtBirth} onChange={(e) => setWeightAtBirth(e.target.value)} placeholder="e.g., 3.5" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
               </div>
               <div>

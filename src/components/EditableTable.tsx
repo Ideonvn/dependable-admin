@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { Fragment, useState, useMemo, useEffect } from 'react';
 import { Edit2, Trash2, Check, X, ChevronDown, ChevronRight, AlertCircle, Clock, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
 import { SchoolOnboardingRecord } from '@/lib/schoolOnboarding';
 import { onboardingApi, RecordDetails, RecordAction } from '@/lib/schools';
@@ -77,10 +77,10 @@ export default function EditableTable({ records, onUpdate, onDelete, onResetStat
       const aVal = a[sortField];
       const bVal = b[sortField];
       
-      // Handle undefined values
-      if (aVal === undefined && bVal === undefined) return 0;
-      if (aVal === undefined) return 1;
-      if (bVal === undefined) return -1;
+      // Handle nullable/undefined values
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return 1;
+      if (bVal == null) return -1;
       
       const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       return sortDirection === 'asc' ? comparison : -comparison;
@@ -255,8 +255,8 @@ export default function EditableTable({ records, onUpdate, onDelete, onResetStat
             </thead>
             <tbody className="bg-white dark:bg-[#0F1115] divide-y divide-gray-200 dark:divide-gray-800">
               {filteredRecords.map((record) => (
-                <>
-                  <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
+                <Fragment key={record.id}>
+                  <tr className="hover:bg-gray-50 dark:hover:bg-gray-900">
                     {editingId === record.id ? (
                       <>
                         <td className="px-4 py-3"></td>
@@ -279,12 +279,20 @@ export default function EditableTable({ records, onUpdate, onDelete, onResetStat
                       <td className="px-4 py-3">
                         <select
                           value={editData.gender || ''}
-                          onChange={(e) => setEditData({ ...editData, gender: e.target.value as SchoolOnboardingRecord['gender'] })}
+                          onChange={(e) => {
+                            const selectedGender = e.target.value;
+                            setEditData({
+                              ...editData,
+                              gender: selectedGender === ''
+                                ? null
+                                : (selectedGender as Exclude<SchoolOnboardingRecord['gender'], null>),
+                            });
+                          }}
                           className="w-full px-2 py-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded text-sm"
                         >
                           <option value="male">Male</option>
                           <option value="female">Female</option>
-                          <option value="other">Other</option>
+                          <option value="">Unknown</option>
                         </select>
                       </td>
                       <td className="px-4 py-3">
@@ -360,7 +368,7 @@ export default function EditableTable({ records, onUpdate, onDelete, onResetStat
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{record.first_name}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{record.last_name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 capitalize">{record.gender}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 capitalize">{record.gender ?? 'Unknown'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{record.date_of_birth}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{record.primary_name}</td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{record.primary_email}</td>
@@ -472,7 +480,7 @@ export default function EditableTable({ records, onUpdate, onDelete, onResetStat
                     </td>
                   </tr>
                 )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>

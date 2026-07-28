@@ -16,7 +16,7 @@ Column order doesn't matter, but the first row must contain these headers:
 
 ## Optional Columns
 
-- `gender` — `male`, `female`, or `other` (case-insensitive)
+- `gender` — `male` or `female` (case-insensitive). Leave blank for unknown/null.
 - `date_of_birth` — Preferably `YYYY-MM-DD`; `DD/MM/YYYY`, `MM/DD/YYYY`, `DD-MM-YYYY`, and `YYYY/MM/DD` are also accepted
 
 ## Example
