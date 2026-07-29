@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, use } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Plus, Send, Upload as UploadIcon, ArrowLeft, RefreshCw, Users, CheckCircle, Clock, Calendar } from 'lucide-react';
 import {
   schoolOnboardingApi,
@@ -278,13 +279,13 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
     try {
       await schoolOnboardingApi.submitRecords(onboarding.id);
       posthog.capture('onboarding_submitted', { onboarding_id: onboarding.id });
+      await loadOnboardingData(false);
       setAlertDialog({
         isOpen: true,
         title: 'Success',
-        message: 'Records submitted successfully! Redirecting to dashboard...',
+        message: 'Records submitted successfully! Data has been refreshed.',
         variant: 'success',
       });
-      setTimeout(() => router.push('/'), 1500);
     } catch (error) {
       setAlertDialog({
         isOpen: true,
@@ -292,6 +293,7 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
         message: 'Failed to submit records',
         variant: 'error',
       });
+    } finally {
       setActionLoading(null);
     }
   };
@@ -386,9 +388,13 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
               />
 
               <div className="min-w-0">
-                <h1 className="text-lg md:text-2xl font-bold leading-tight md:truncate md:max-w-[28rem] text-white">
+                <Link
+                  href={`/schools/${school.school_id}`}
+                  className="inline-block text-lg md:text-2xl font-bold leading-tight md:truncate md:max-w-[28rem] text-white hover:text-white/90 underline-offset-4 hover:underline"
+                  title="Open school page"
+                >
                   {school.school_name}
-                </h1>
+                </Link>
                 <p className="text-sm text-white/90 mt-1">
                   {school.statistics.total_records} record{school.statistics.total_records !== 1 ? 's' : ''} • {school.statistics.pending_count} pending
                 </p>
