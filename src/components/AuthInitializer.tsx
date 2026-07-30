@@ -2,6 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import { useEffect, useState } from 'react';
+import axios from 'axios';
 import posthog from 'posthog-js';
 import { setGoogleIdToken } from '@/lib/api';
 import { tokenService } from '@/lib/tokenService';
@@ -61,13 +62,18 @@ export default function AuthInitializer({ children }: { children: React.ReactNod
           setStep('done');
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : '';
+          const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+          // Any failure during bootstrap means we can't authenticate — send the
+          // user back to sign-in instead of leaving them stuck on the loader.
           const isAuthError =
             message === 'REFRESH_TOKEN_EXPIRED' ||
-            message === 'GOOGLE_TOKEN_EXPIRED';
+            message === 'GOOGLE_TOKEN_EXPIRED' ||
+            status === 401 ||
+            status === 403;
 
           if (isAuthError) {
-            console.error('Auth token expired, signing out:', message);
-            posthog.capture('session_expired', { reason: message });
+            console.error('Auth failed during bootstrap, signing out:', message || status);
+            posthog.capture('session_expired', { reason: message || `http_${status}` });
             posthog.reset();
             tokenService.clearTokenData();
             userSetupService.clearSetupData();
