@@ -39,7 +39,7 @@ export interface OperationResult {
   total: number;
   successful: number;
   failed: number;
-  errors: any[];
+  errors: unknown[];
 }
 
 export interface CreateClassResult {
@@ -134,7 +134,7 @@ export const schoolOnboardingApi = {
     recordId: string,
     updates: Partial<SchoolOnboardingRecord>
   ): Promise<SchoolOnboardingRecord> => {
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       ...updates,
     };
 
@@ -178,7 +178,7 @@ export const schoolOnboardingApi = {
     onboardingId: string,
     record: Omit<SchoolOnboardingRecord, 'id'>
   ): Promise<SchoolOnboardingRecord> => {
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       ...record,
       gender: serializeOnboardingGender(record.gender),
       date_of_birth: serializeOnboardingDateOfBirth(record.date_of_birth),

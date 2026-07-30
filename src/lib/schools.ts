@@ -8,7 +8,7 @@ export interface RecordAction {
   user_id: string | null;
   success: string;
   message: string;
-  raw_metadata: any;
+  raw_metadata: unknown;
   _created_at: string;
 }
 
@@ -943,7 +943,7 @@ export const onboardingApi = {
   // Get records for a specific school
   getRecords: async (schoolId: string): Promise<SchoolOnboardingRecord[]> => {
     try {
-      const response = await apiClient.get<any[]>(`/admin/onboarding/schools/${schoolId}/records`);
+      const response = await apiClient.get<Record<string, unknown>[]>(`/admin/onboarding/schools/${schoolId}/records`);
 
       // Map API record shape to local SchoolOnboardingRecord
       return response.data.map((r) => {
@@ -986,7 +986,7 @@ export const onboardingApi = {
   // Get classes summary for a specific school
   getClasses: async (schoolId: string): Promise<ClassSummary[]> => {
     try {
-      const response = await apiClient.get<any[]>(`/admin/onboarding/schools/${schoolId}/classes`);
+      const response = await apiClient.get<Record<string, unknown>[]>(`/admin/onboarding/schools/${schoolId}/classes`);
 
       // Map API class shape to local ClassSummary
       return response.data.map((c) => ({
@@ -1002,7 +1002,7 @@ export const onboardingApi = {
   // Get record details with actions
   getRecordDetails: async (schoolId: string, recordId: string): Promise<RecordDetails | null> => {
     try {
-      const response = await apiClient.get<any>(`/admin/onboarding/schools/${schoolId}/records/${recordId}`);
+      const response = await apiClient.get<Record<string, unknown>>(`/admin/onboarding/schools/${schoolId}/records/${recordId}`);
       const r = response.data;
 
       // Map gender
@@ -1036,7 +1036,7 @@ export const onboardingApi = {
         status,
         error_message: r.error_message,
         actions: r.actions || [],
-      };
+      } as RecordDetails;
     } catch (error) {
       console.error('Failed to fetch record details:', error);
       return null;

@@ -458,7 +458,7 @@ export default function EditableTable({ records, onUpdate, onDelete, onResetStat
                                       </span>
                                     </div>
                                     <p className="text-sm text-gray-700 dark:text-gray-300">{action.message}</p>
-                                    {action.raw_metadata && (
+                                    {!!action.raw_metadata && (
                                       <details className="mt-2">
                                         <summary className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer hover:text-gray-900 dark:hover:text-gray-100">
                                           View metadata
