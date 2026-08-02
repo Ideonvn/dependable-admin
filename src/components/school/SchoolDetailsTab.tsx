@@ -1,9 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { School, schoolsApi } from '@/lib/schools';
-import { Building2, Camera, Save } from 'lucide-react';
+import { Camera, Save } from 'lucide-react';
 import SchoolProfileImage from '@/components/SchoolProfileImage';
+import SchoolStatusBadge from '@/components/SchoolStatusBadge';
+import ConfirmDialog from '@/components/ConfirmDialog';
+import { SchoolStatus, SCHOOL_STATUSES, SCHOOL_STATUS_META, billingStateText } from '@/lib/schoolStatus';
+import { billingApi } from '@/lib/billing';
+import { userSetupService } from '@/lib/userSetupService';
 
 interface SchoolDetailsTabProps {
   school: School;
@@ -11,9 +16,45 @@ interface SchoolDetailsTabProps {
 }
 
 export default function SchoolDetailsTab({ school, onUpdate }: SchoolDetailsTabProps) {
+  const isAdmin = userSetupService.isAdmin();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(school.name);
   const [saving, setSaving] = useState(false);
+  const [generateInvoices, setGenerateInvoices] = useState<boolean | null>(null);
+  const [savingStatus, setSavingStatus] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<SchoolStatus | null>(null);
+
+  // Fetch the billing flag so we can show the combined billing state next to the status control.
+  useEffect(() => {
+    if (!isAdmin) return;
+    billingApi
+      .getBillingConfig(school.id)
+      .then((c) => setGenerateInvoices(c.generate_invoices))
+      .catch(() => setGenerateInvoices(null));
+  }, [isAdmin, school.id]);
+
+  const applyStatus = async (status: SchoolStatus) => {
+    setSavingStatus(true);
+    try {
+      await schoolsApi.updateSchoolStatus(school.id, status);
+      onUpdate();
+    } catch (error) {
+      console.error('Error updating school status:', error);
+      alert('Failed to update school status. Please try again.');
+    } finally {
+      setSavingStatus(false);
+    }
+  };
+
+  const handleStatusChange = (next: SchoolStatus) => {
+    if (next === school.status) return;
+    // Moving a school out of active stops automatic invoicing — confirm first.
+    if (school.status === 'active') {
+      setPendingStatus(next);
+      return;
+    }
+    applyStatus(next);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -135,6 +176,47 @@ export default function SchoolDetailsTab({ school, onUpdate }: SchoolDetailsTabP
           </div>
         )}
       </div>
+
+      {/* School Status (platform-admin only — controls automatic billing) */}
+      {isAdmin && (
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+          <div className="flex items-center gap-3 mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              School Status
+            </label>
+            <SchoolStatusBadge status={school.status} />
+          </div>
+
+          <select
+            value={school.status}
+            onChange={(e) => handleStatusChange(e.target.value as SchoolStatus)}
+            disabled={savingStatus}
+            className="w-full max-w-xs px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 disabled:opacity-60"
+          >
+            {SCHOOL_STATUSES.map((s) => (
+              <option key={s} value={s}>{SCHOOL_STATUS_META[s].label}</option>
+            ))}
+          </select>
+
+          {generateInvoices !== null && (
+            <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+              {billingStateText(school.status, generateInvoices)}
+            </p>
+          )}
+        </div>
+      )}
+
+      <ConfirmDialog
+        isOpen={pendingStatus !== null}
+        onClose={() => setPendingStatus(null)}
+        onConfirm={() => {
+          if (pendingStatus) applyStatus(pendingStatus);
+        }}
+        title="Change school status"
+        message="Moving this school out of Active will stop automatic invoicing. Are you sure you want to continue?"
+        confirmText="Change status"
+        variant="warning"
+      />
 
       {/* School Statistics Overview */}
       {/* <div className="border-t border-gray-200 dark:border-gray-700 pt-6">

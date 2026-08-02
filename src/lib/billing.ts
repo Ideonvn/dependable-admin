@@ -26,6 +26,7 @@ export interface BillingConfig {
   invoice_prefix: string;
   invoice_due_days: number;
   min_admission_days: number;
+  generate_invoices: boolean;
 }
 
 export interface BillingDetails {

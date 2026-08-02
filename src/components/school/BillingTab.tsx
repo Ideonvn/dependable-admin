@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 import { Receipt, Download, Plus, Calendar, DollarSign, AlertCircle, FileText, Settings, Save, X, MapPin, Mail, Phone, ChevronDown } from 'lucide-react';
 import posthog from 'posthog-js';
 import { billingApi, Invoice, BillingConfig, BillingDetails, SchoolPlan } from '@/lib/billing';
+import { SchoolStatus, billingStateText } from '@/lib/schoolStatus';
 import { userSetupService } from '@/lib/userSetupService';
 
 interface BillingTabProps {
   schoolId: string;
+  status: SchoolStatus;
 }
 
 interface StatusModalState {
@@ -18,7 +20,7 @@ interface StatusModalState {
 
 type BillingTabType = 'invoices' | 'configuration' | 'details' | 'plan';
 
-export default function BillingTab({ schoolId }: BillingTabProps) {
+export default function BillingTab({ schoolId, status }: BillingTabProps) {
   const isSuperAdmin = userSetupService.isAdmin();
   const [activeTab, setActiveTab] = useState<BillingTabType>('invoices');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -58,6 +60,7 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
     invoice_prefix: '',
     invoice_due_days: 0,
     min_admission_days: 0,
+    generate_invoices: true,
   });
 
   const [detailsForm, setDetailsForm] = useState<Partial<BillingDetails>>({
@@ -111,6 +114,7 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
         invoice_prefix: data.invoice_prefix,
         invoice_due_days: data.invoice_due_days,
         min_admission_days: data.min_admission_days,
+        generate_invoices: data.generate_invoices,
       });
     } catch (error) {
       console.error('Error loading billing config:', error);
@@ -244,6 +248,7 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
         invoice_prefix: configForm.invoice_prefix,
         invoice_due_days: configForm.invoice_due_days,
         min_admission_days: configForm.min_admission_days,
+        generate_invoices: configForm.generate_invoices,
       });
       setConfig(updated);
       setShowConfigForm(false);
@@ -617,6 +622,27 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
                   Edit
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Automatic billing state — the "Generate Invoices" flag is edited in the config form */}
+          {config && (
+            <div className="mt-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+              <div className="flex items-center gap-3">
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100">Generate Invoices</h4>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                    config.generate_invoices
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  {config.generate_invoices ? 'Enabled' : 'Disabled'}
+                </span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                {billingStateText(status, config.generate_invoices)}
+              </p>
             </div>
           )}
         </div>
@@ -1166,6 +1192,31 @@ export default function BillingTab({ schoolId }: BillingTabProps) {
                   required
                   min="0"
                 />
+              </div>
+              <div className="flex items-center justify-between gap-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Generate Invoices
+                  </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Turn off to exclude this school from automatic invoice generation.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={configForm.generate_invoices ?? true}
+                  onClick={() => setConfigForm({ ...configForm, generate_invoices: !(configForm.generate_invoices ?? true) })}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+                    (configForm.generate_invoices ?? true) ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                      (configForm.generate_invoices ?? true) ? 'translate-x-5' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
               </div>
               <div className="flex gap-2">
                 <button

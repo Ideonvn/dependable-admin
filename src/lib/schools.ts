@@ -1,4 +1,5 @@
 import { SchoolOnboardingRecord, ClassSummary } from './schoolOnboarding';
+import { SchoolStatus } from './schoolStatus';
 import apiClient from './api';
 
 export interface RecordAction {
@@ -36,6 +37,7 @@ export interface SchoolStatistics {
 export interface SchoolWithStats {
   school_id: string;
   school_name: string;
+  school_status: SchoolStatus;
   image_filename: string | null;
   statistics: SchoolStatistics;
   last_activity?: string;
@@ -62,6 +64,7 @@ export interface SchoolStudentsOverview {
 export interface School {
   id: string;
   name: string;
+  status: SchoolStatus;
   image_filename: string | null;
   students_overview: SchoolStudentsOverview;
 }
@@ -712,6 +715,15 @@ export const schoolsApi = {
   // Update school details
   updateSchool: async (schoolId: string, data: { name: string }): Promise<School> => {
     const response = await apiClient.put<School>(`/schools/${schoolId}`, data);
+    return response.data;
+  },
+
+  // Update a school's lifecycle status (platform-admin only). Controls automatic billing.
+  updateSchoolStatus: async (schoolId: string, status: SchoolStatus): Promise<School> => {
+    const response = await apiClient.patch<School>(
+      `/admin/schools/${schoolId}/status`,
+      { status }
+    );
     return response.data;
   },
 

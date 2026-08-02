@@ -248,7 +248,7 @@ export default function SchoolDetailPage() {
         {activeTab === 'classrooms' && <ClassroomsTab schoolId={school.id} />}
         {activeTab === 'enrollments' && <EnrollmentsTab schoolId={school.id} />}
         {activeTab === 'schoolYears' && <SchoolYearsTab schoolId={school.id} />}
-        {activeTab === 'billing' && <BillingTab schoolId={school.id} />}
+        {activeTab === 'billing' && <BillingTab schoolId={school.id} status={school.status} />}
         {activeTab === 'calendar' && <CalendarTab schoolId={school.id} />}
         {activeTab === 'notices' && <NoticesTab schoolId={school.id} />}
         {activeTab === 'logging' && <LoggingTab schoolId={school.id} />}

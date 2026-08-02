@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Users, CheckCircle, Clock, Upload, Calendar } from 'lucide-react';
 import { SchoolWithStats } from '@/lib/schools';
 import SchoolProfileImage from './SchoolProfileImage';
+import SchoolStatusBadge from './SchoolStatusBadge';
 
 interface SchoolCardProps {
   school: SchoolWithStats;
@@ -53,9 +54,12 @@ export default function SchoolCard({ school }: SchoolCardProps) {
 
       {/* School Info */}
       <div className="p-4">
-        <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg line-clamp-1 mb-3">
-          {school.school_name}
-        </h3>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg line-clamp-1">
+            {school.school_name}
+          </h3>
+          <SchoolStatusBadge status={school.school_status} className="flex-shrink-0" />
+        </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3 mb-3">

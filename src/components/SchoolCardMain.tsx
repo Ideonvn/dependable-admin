@@ -3,6 +3,7 @@
 import { School } from '@/lib/schools';
 import { useRouter } from 'next/navigation';
 import SchoolProfileImage from './SchoolProfileImage';
+import SchoolStatusBadge from './SchoolStatusBadge';
 
 interface SchoolCardMainProps {
   school: School;
@@ -36,6 +37,7 @@ export default function SchoolCardMain({ school }: SchoolCardMainProps) {
           <h3 className="text-xl font-bold text-white mb-1 truncate">
             {school.name}
           </h3>
+          <SchoolStatusBadge status={school.status} />
         </div>
       </div>
 

@@ -4,8 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw, Building2, ClipboardList, Users, FileText, Loader2 } from 'lucide-react';
 import { schoolsApi, School } from '@/lib/schools';
+import { SCHOOL_STATUSES, SCHOOL_STATUS_META } from '@/lib/schoolStatus';
 import SchoolCardMain from '@/components/SchoolCardMain';
 import { userSetupService } from '@/lib/userSetupService';
+
+type StatusFilter = 'default' | (typeof SCHOOL_STATUSES)[number];
 
 export default function DashboardClient() {
   const isSuperAdmin = userSetupService.isAdmin();
@@ -13,6 +16,12 @@ export default function DashboardClient() {
   const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('default');
+
+  // Default view hides archived schools; a specific filter matches exactly.
+  const filteredSchools = schools.filter((s) =>
+    statusFilter === 'default' ? s.status !== 'archived' : s.status === statusFilter
+  );
 
   const navigate = (path: string) => {
     setNavigatingTo(path);
@@ -47,6 +56,17 @@ export default function DashboardClient() {
         </div>
         
         <div className="flex items-center gap-3">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+            className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent"
+          >
+            <option value="default">All (excl. archived)</option>
+            {SCHOOL_STATUSES.map((s) => (
+              <option key={s} value={s}>{SCHOOL_STATUS_META[s].label}</option>
+            ))}
+          </select>
+
           <button
             onClick={loadSchools}
             disabled={loading}
@@ -96,17 +116,21 @@ export default function DashboardClient() {
         <div className="flex items-center justify-center py-20">
           <div className="w-12 h-12 border-4 border-[#1A1A6D] dark:border-[#20B2AA] border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : schools.length === 0 ? (
+      ) : filteredSchools.length === 0 ? (
         <div className="bg-white dark:bg-[#0F1115] rounded-lg shadow border border-gray-200 dark:border-gray-800 p-12 text-center">
           <Building2 className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No schools yet</h3>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            {schools.length === 0 ? 'No schools yet' : 'No schools match this filter'}
+          </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Schools will appear here once they are onboarded
+            {schools.length === 0
+              ? 'Schools will appear here once they are onboarded'
+              : 'Try a different status filter'}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-          {schools.map((school) => (
+          {filteredSchools.map((school) => (
             <SchoolCardMain key={school.id} school={school} />
           ))}
         </div>

@@ -17,6 +17,7 @@ import ClassSummaryTable from '@/components/ClassSummaryTable';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import AlertDialog from '@/components/AlertDialog';
 import SchoolProfileImage from '@/components/SchoolProfileImage';
+import SchoolStatusBadge from '@/components/SchoolStatusBadge';
 import { userSetupService } from '@/lib/userSetupService';
 
 export default function OnboardingEdit({ params }: { params: Promise<{ id: string }> }) {
@@ -395,6 +396,9 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
                 >
                   {school.school_name}
                 </Link>
+                <div className="mt-1.5">
+                  <SchoolStatusBadge status={school.school_status} />
+                </div>
                 <p className="text-sm text-white/90 mt-1">
                   {school.statistics.total_records} record{school.statistics.total_records !== 1 ? 's' : ''} • {school.statistics.pending_count} pending
                 </p>
