@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Search, Plus, User } from 'lucide-react';
+import { Users, Search, Plus, Mail } from 'lucide-react';
 import { schoolsApi, Student } from '@/lib/schools';
 import EnrollStudentModal from '@/components/EnrollStudentModal';
+import OnboardStudentModal from '@/components/OnboardStudentModal';
 import StudentProfileImage from '@/components/StudentProfileImage';
 
 interface StudentsTabProps {
@@ -17,6 +18,14 @@ export default function StudentsTab({ schoolId }: StudentsTabProps) {
   const [students, setStudents] = useState<Student[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
+  const [isOnboardModalOpen, setIsOnboardModalOpen] = useState(false);
+  const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
+
+  const addToast = (message: string) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setToasts((t) => [...t, { id, message }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5000);
+  };
 
   useEffect(() => {
     loadStudents();
@@ -107,13 +116,22 @@ export default function StudentsTab({ schoolId }: StudentsTabProps) {
           <Users className="w-6 h-6 text-[#1A1A6D] dark:text-[#20B2AA]" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Students</h3>
         </div>
-        <button 
-          onClick={() => setIsEnrollModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity"
-        >
-          <Plus className="w-4 h-4" />
-          Add Student
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsOnboardModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <Mail className="w-4 h-4" />
+            Onboard Student
+          </button>
+          <button
+            onClick={() => setIsEnrollModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-4 h-4" />
+            Add Student
+          </button>
+        </div>
       </div>
 
       {/* Search Bar */}
@@ -219,6 +237,37 @@ export default function StudentsTab({ schoolId }: StudentsTabProps) {
         onSuccess={loadStudents}
         schoolId={schoolId}
       />
+
+      {/* Onboard Student Modal */}
+      <OnboardStudentModal
+        isOpen={isOnboardModalOpen}
+        onClose={() => setIsOnboardModalOpen(false)}
+        onSuccess={(primaryEmail) => {
+          addToast(`Invite sent to ${primaryEmail}`);
+          loadStudents();
+        }}
+        schoolId={schoolId}
+      />
+
+      {/* Toast container */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className="max-w-sm w-full px-4 py-3 rounded-lg shadow-lg border bg-white dark:bg-[#111217] border-gray-200 dark:border-gray-800 ring-2 ring-green-500 dark:ring-green-400"
+          >
+            <div className="flex items-start gap-3">
+              <p className="flex-1 text-sm text-gray-700 dark:text-gray-300">{t.message}</p>
+              <button
+                onClick={() => setToasts((s) => s.filter((x) => x.id !== t.id))}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

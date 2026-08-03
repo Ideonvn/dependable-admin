@@ -284,6 +284,25 @@ export interface SchoolReportResponse {
 
 export type StudentGender = 'MALE' | 'FEMALE' | null;
 
+export interface StudentOnboardingRecord {
+  id: string;
+  school_id: string;
+  student_id: string | null;
+  status: string;
+  batch_id: string | null;
+  first_name: string;
+  last_name: string;
+  gender: StudentGender;
+  date_of_birth: string | null;
+  primary_name: string;
+  primary_email: string;
+  class_name: string;
+  validation_sent_at: string | null;
+  validation_completed_at: string | null;
+  _created_at: string;
+  _updated_at: string | null;
+}
+
 const normalizeStudentGender = (value: unknown): StudentGender => {
   if (typeof value !== 'string') {
     return null;
@@ -702,6 +721,26 @@ export const schoolsApi = {
       ...response.data,
       gender: normalizeStudentGender(response.data.gender),
     };
+  },
+
+  // Create a pending onboarding record and email the parent a validation link
+  onboardStudent: async (
+    schoolId: string,
+    classroomId: string,
+    data: {
+      first_name: string;
+      last_name: string;
+      gender: StudentGender;
+      date_of_birth: string | null;
+      primary_name: string;
+      primary_email: string;
+    }
+  ): Promise<StudentOnboardingRecord> => {
+    const response = await apiClient.post<StudentOnboardingRecord>(
+      `/schools/${schoolId}/classrooms/${classroomId}/onboarding`,
+      data
+    );
+    return response.data;
   },
 
   // Update student enrollments
