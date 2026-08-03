@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { schoolsApi, StudentDetails, StudentContact, StudentEnrollment, AttendanceCalendarMonth, AttendanceBodyCheck, StudentReport } from '@/lib/schools';
 import { AlertCircle, Loader2, Save, Upload, Users, GraduationCap, Contact, ChevronDown, ChevronRight, Check, X, Plus, Calendar, ChevronLeft, FileText, Trash2, Download } from 'lucide-react';
+import axios from 'axios';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import ClassroomProfileImage from '../ClassroomProfileImage';
 import ContactProfileImage from '../ContactProfileImage';
 import StudentProfileImage from '../StudentProfileImage';
@@ -69,6 +71,8 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
   const [showEditContactModal, setShowEditContactModal] = useState(false);
   const [updatingContact, setUpdatingContact] = useState(false);
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
+  const [contactToDelete, setContactToDelete] = useState<StudentContact | null>(null);
+  const [deletingContact, setDeletingContact] = useState(false);
 
   const [details, setDetails] = useState<StudentDetails | null>(null);
   const [contacts, setContacts] = useState<StudentContact[]>([]);
@@ -287,6 +291,25 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
       addToast({ title: 'Error', message: 'Failed to delete report.', variant: 'error' });
     } finally {
       setDeletingReportId(null);
+    }
+  };
+
+  const handleDeleteContact = async () => {
+    if (!contactToDelete) return;
+    setDeletingContact(true);
+    try {
+      await schoolsApi.deleteStudentContact(schoolId, studentId, contactToDelete.id);
+      setContacts((prev) => prev.filter((c) => c.id !== contactToDelete.id));
+      if (expandedContactId === contactToDelete.id) setExpandedContactId(null);
+      addToast({ title: 'Success', message: 'Contact deleted.', variant: 'success' });
+      setContactToDelete(null);
+    } catch (error) {
+      const friendly = axios.isAxiosError(error)
+        ? error.response?.data?.error?.friendly_message
+        : undefined;
+      addToast({ title: 'Error', message: friendly || 'Failed to delete contact.', variant: 'error' });
+    } finally {
+      setDeletingContact(false);
     }
   };
 
@@ -759,13 +782,22 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                               </div>
                             </div>
 
-                            <div className="md:col-span-2 flex justify-end pt-2">
+                            <div className="md:col-span-2 flex justify-end gap-2 pt-2">
                               <button
                                 type="button"
                                 onClick={() => openEditContactModal(contact)}
                                 className="px-3 py-1.5 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white text-sm rounded-lg hover:opacity-90 transition-opacity"
                               >
                                 Edit Contact
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setContactToDelete(contact)}
+                                disabled={contact.primary}
+                                title={contact.primary ? 'Primary contacts cannot be deleted' : undefined}
+                                className="px-3 py-1.5 bg-red-600 dark:bg-red-700 text-white text-sm rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                Delete Contact
                               </button>
                             </div>
                           </div>
@@ -1298,6 +1330,16 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={contactToDelete !== null}
+        onClose={() => { if (!deletingContact) setContactToDelete(null); }}
+        onConfirm={handleDeleteContact}
+        title="Delete contact"
+        message={`Permanently remove ${contactToDelete?.full_name ?? 'this contact'} from this student? This can't be undone. The same person can be re-added later via Add Contact.`}
+        confirmText="Delete Contact"
+        variant="danger"
+      />
 
       {/* Edit Contact Modal */}
       {showEditContactModal && (

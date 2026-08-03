@@ -507,6 +507,14 @@ export const schoolsApi = {
     }
   },
 
+  deleteStudentContact: async (
+    schoolId: string,
+    studentId: string,
+    contactId: string
+  ): Promise<void> => {
+    await apiClient.delete(`/schools/${schoolId}/students/${studentId}/contacts/${contactId}`);
+  },
+
   getStudentAttendanceCalendar: async (
     schoolId: string,
     studentId: string,
