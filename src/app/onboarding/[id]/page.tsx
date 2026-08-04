@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Send, Upload as UploadIcon, ArrowLeft, RefreshCw, Users, Clock, Calendar, ChevronDown, Zap } from 'lucide-react';
+import { Plus, Send, Upload as UploadIcon, ArrowLeft, RefreshCw, Calendar, ChevronDown, Zap, Check } from 'lucide-react';
 import {
   schoolOnboardingApi,
   SchoolOnboarding,
@@ -19,6 +19,13 @@ import AlertDialog from '@/components/AlertDialog';
 import SchoolProfileImage from '@/components/SchoolProfileImage';
 import SchoolStatusBadge from '@/components/SchoolStatusBadge';
 import { userSetupService } from '@/lib/userSetupService';
+
+const REFRESH_OPTIONS: { label: string; ms: number | null; caption?: string }[] = [
+  { label: 'Off', ms: null },
+  { label: '1 Minute', ms: 60_000, caption: 'every minute' },
+  { label: '5 Minutes', ms: 300_000, caption: 'every 5 minutes' },
+  { label: '15 Minutes', ms: 900_000, caption: 'every 15 minutes' },
+];
 
 export default function OnboardingEdit({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -46,6 +53,9 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
   const [autoSubmit, setAutoSubmit] = useState(false);
   const [configMenuOpen, setConfigMenuOpen] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
+  // Auto-refresh
+  const [autoRefreshMs, setAutoRefreshMs] = useState<number | null>(null);
+  const [refreshMenuOpen, setRefreshMenuOpen] = useState(false);
   const [alertDialog, setAlertDialog] = useState<{ isOpen: boolean; title: string; message: string; variant: 'success' | 'error' | 'info' }>({ isOpen: false, title: '', message: '', variant: 'info' });
   // Toasts (non-blocking notifications)
   const [toasts, setToasts] = useState<{ id: string; title?: string; message: string; variant?: 'success' | 'error' | 'info' }[]>([]);
@@ -119,6 +129,14 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
       .then((cfg) => setAutoSubmit(cfg.auto_submit))
       .catch((error) => console.error('Failed to load onboarding config:', error));
   }, [id]);
+
+  // Auto-refresh on the chosen interval
+  useEffect(() => {
+    if (!autoRefreshMs) return;
+    const timer = setInterval(() => loadOnboardingData(false), autoRefreshMs);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRefreshMs, id]);
 
   const toggleAutoSubmit = async () => {
     const next = !autoSubmit;
@@ -433,15 +451,62 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
             </div>
 
             <div className="absolute right-4 top-3">
-              <button
-                onClick={() => loadOnboardingData(false)}
-                disabled={refreshing}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg hover:bg-white/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Refresh data"
-              >
-                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
+              <div className="relative flex">
+                <button
+                  onClick={() => loadOnboardingData(false)}
+                  disabled={refreshing}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-white/20 backdrop-blur-sm border border-white/30 rounded-l-lg hover:bg-white/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Refresh data"
+                >
+                  <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  {autoRefreshMs ? (
+                    <span className="flex flex-col items-start leading-tight">
+                      <span>Refreshing</span>
+                      <span className="text-[10px] font-normal opacity-80">
+                        {REFRESH_OPTIONS.find((o) => o.ms === autoRefreshMs)?.caption}
+                      </span>
+                    </span>
+                  ) : (
+                    'Refresh'
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRefreshMenuOpen((o) => !o)}
+                  aria-label="Auto-refresh options"
+                  aria-expanded={refreshMenuOpen}
+                  className="flex items-center px-1.5 text-white bg-white/20 backdrop-blur-sm border border-l-0 border-white/30 rounded-r-lg hover:bg-white/30 transition-colors"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+
+                {refreshMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setRefreshMenuOpen(false)} />
+                    <div className="absolute right-0 top-full mt-2 w-48 z-50 bg-white dark:bg-[#1a1a1a] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-2">
+                      <div className="px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400">Auto-refresh every</div>
+                      {REFRESH_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.label}
+                          type="button"
+                          onClick={() => {
+                            setAutoRefreshMs(opt.ms);
+                            setRefreshMenuOpen(false);
+                          }}
+                          className={`flex w-full items-center justify-between px-3 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                            autoRefreshMs === opt.ms
+                              ? 'text-[#1A1A6D] dark:text-[#20B2AA] font-medium'
+                              : 'text-gray-700 dark:text-gray-300'
+                          }`}
+                        >
+                          {opt.label}
+                          {autoRefreshMs === opt.ms && <Check className="w-4 h-4" />}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
