@@ -40,6 +40,16 @@ export default function EditableTable({ records, onUpdate, onDelete, onResetStat
     }
   }, [initialEditingId, records]);
 
+  // When the records list reloads (e.g. Refresh), refetch actions for any open rows
+  useEffect(() => {
+    expandedRows.forEach((id) => {
+      if (!id.startsWith('temp-')) {
+        fetchRecordActions(id);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [records]);
+
   // Get unique class names for filter
   const classNames = useMemo(() => {
     return Array.from(new Set(records.map(r => r.class_name))).sort();
@@ -112,15 +122,15 @@ export default function EditableTable({ records, onUpdate, onDelete, onResetStat
     setEditData({});
   };
 
-  const toggleRowExpand = async (id: string) => {
+  const toggleRowExpand = (id: string) => {
     const newExpanded = new Set(expandedRows);
     if (newExpanded.has(id)) {
       newExpanded.delete(id);
     } else {
       newExpanded.add(id);
-      // Fetch actions if not already loaded
-      if (!recordDetails.has(id) && !id.startsWith('temp-')) {
-        await fetchRecordActions(id);
+      // Always refetch on open so actions are never stale
+      if (!id.startsWith('temp-')) {
+        fetchRecordActions(id);
       }
     }
     setExpandedRows(newExpanded);

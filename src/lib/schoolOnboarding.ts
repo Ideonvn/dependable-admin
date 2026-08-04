@@ -28,6 +28,13 @@ export interface SchoolOnboarding {
   status: 'draft' | 'validating' | 'validated' | 'submitted';
 }
 
+export interface OnboardingConfig {
+  school_id: string;
+  auto_submit: boolean;
+  created_by_user_id: string | null;
+  updated_by_user_id: string | null;
+}
+
 export interface ClassSummary {
   class_name: string;
   total_students: number;
@@ -222,6 +229,23 @@ export const schoolOnboardingApi = {
     const payload = {};
     const response = await apiClient.post(`/admin/onboarding/schools/${onboardingId}/records/submit`, payload);
     return response.data as OperationResult;
+  },
+
+  // Get the school's onboarding config (never 404s for a valid school; returns a virtual default)
+  getConfig: async (schoolId: string): Promise<OnboardingConfig> => {
+    const response = await apiClient.get(`/admin/onboarding/schools/${schoolId}/config`);
+    return response.data as OnboardingConfig;
+  },
+
+  // Upsert the onboarding config (partial: omitted fields are left unchanged)
+  updateConfig: async (
+    schoolId: string,
+    autoSubmit: boolean
+  ): Promise<OnboardingConfig> => {
+    const response = await apiClient.put(`/admin/onboarding/schools/${schoolId}/config`, {
+      auto_submit: autoSubmit,
+    });
+    return response.data as OnboardingConfig;
   },
 
   // Reset a failed record back to its last known status so it can be retried

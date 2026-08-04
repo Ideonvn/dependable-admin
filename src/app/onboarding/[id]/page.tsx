@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Send, Upload as UploadIcon, ArrowLeft, RefreshCw, Users, CheckCircle, Clock, Calendar } from 'lucide-react';
+import { Plus, Send, Upload as UploadIcon, ArrowLeft, RefreshCw, Users, Clock, Calendar, ChevronDown, Zap } from 'lucide-react';
 import {
   schoolOnboardingApi,
   SchoolOnboarding,
@@ -42,6 +42,10 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
   const [validateDialog, setValidateDialog] = useState(false);
   const [submitDialog, setSubmitDialog] = useState(false);
   const [submitClassesDialog, setSubmitClassesDialog] = useState(false);
+  // Auto-submit config
+  const [autoSubmit, setAutoSubmit] = useState(false);
+  const [configMenuOpen, setConfigMenuOpen] = useState(false);
+  const [savingConfig, setSavingConfig] = useState(false);
   const [alertDialog, setAlertDialog] = useState<{ isOpen: boolean; title: string; message: string; variant: 'success' | 'error' | 'info' }>({ isOpen: false, title: '', message: '', variant: 'info' });
   // Toasts (non-blocking notifications)
   const [toasts, setToasts] = useState<{ id: string; title?: string; message: string; variant?: 'success' | 'error' | 'info' }[]>([]);
@@ -107,6 +111,29 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
   useEffect(() => {
     loadOnboardingData();
   }, [id]);
+
+  // Load auto-submit config separately so it doesn't block the list render
+  useEffect(() => {
+    schoolOnboardingApi
+      .getConfig(id)
+      .then((cfg) => setAutoSubmit(cfg.auto_submit))
+      .catch((error) => console.error('Failed to load onboarding config:', error));
+  }, [id]);
+
+  const toggleAutoSubmit = async () => {
+    const next = !autoSubmit;
+    setAutoSubmit(next); // optimistic flip
+    setSavingConfig(true);
+    try {
+      await schoolOnboardingApi.updateConfig(id, next);
+      addToast({ message: next ? 'Auto-submit on' : 'Auto-submit off', variant: 'success' });
+    } catch {
+      setAutoSubmit(!next); // revert
+      addToast({ title: 'Update failed', message: 'Could not change auto-submit. Please try again.', variant: 'error' });
+    } finally {
+      setSavingConfig(false);
+    }
+  };
 
   // Use classes provided by backend when available
   const classSummary = useMemo(() => classes, [classes]);
@@ -490,18 +517,64 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
                     )}
                     Validate
                   </button>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={actionLoading !== null}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 dark:bg-purple-700 text-white rounded-lg hover:opacity-90 transition-colors disabled:opacity-50"
-                  >
-                    {actionLoading === 'submit' ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <UploadIcon className="w-4 h-4" />
+                  <div className="relative flex">
+                    <button
+                      onClick={handleSubmit}
+                      disabled={actionLoading !== null}
+                      title={autoSubmit ? 'Auto-submit is on — records submit on validation. Click to submit any validated records now.' : undefined}
+                      className="flex items-center gap-2 px-4 py-2 bg-purple-600 dark:bg-purple-700 text-white rounded-l-lg hover:opacity-90 transition-colors disabled:opacity-50"
+                    >
+                      {actionLoading === 'submit' ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : autoSubmit ? (
+                        <Zap className="w-4 h-4 fill-current" />
+                      ) : (
+                        <UploadIcon className="w-4 h-4" />
+                      )}
+                      {autoSubmit ? 'Auto-submitting' : 'Submit'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfigMenuOpen((o) => !o)}
+                      aria-label="Submit options"
+                      aria-expanded={configMenuOpen}
+                      className="flex items-center px-2 py-2 bg-purple-600 dark:bg-purple-700 text-white rounded-r-lg border-l border-purple-500/50 hover:opacity-90 transition-colors"
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+
+                    {configMenuOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setConfigMenuOpen(false)} />
+                        <div className="absolute right-0 top-full mt-2 w-72 z-50 bg-white dark:bg-[#1a1a1a] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">Auto-submit on validation</div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Records are sent to the core system as soon as the parent finishes validating.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={autoSubmit}
+                              disabled={savingConfig}
+                              onClick={toggleAutoSubmit}
+                              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                                autoSubmit ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                                  autoSubmit ? 'translate-x-5' : 'translate-x-0.5'
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        </div>
+                      </>
                     )}
-                    Submit
-                  </button>
+                  </div>
                 </div>
               </div>
 
