@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { schoolsApi, StudentDetails, StudentContact, StudentEnrollment, AttendanceCalendarMonth, AttendanceBodyCheck, StudentReport } from '@/lib/schools';
 import { parseApiError } from '@/lib/apiError';
 import { COUNTRIES } from '@/lib/countries';
+import { ID_TYPE_OPTIONS } from '@/lib/idTypes';
 import { AlertCircle, Loader2, Save, Upload, Users, GraduationCap, Contact, ChevronDown, ChevronRight, Check, X, Plus, Calendar, ChevronLeft, FileText, Trash2, Download } from 'lucide-react';
 import axios from 'axios';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -1438,13 +1439,19 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       ID Type
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={editContactFormData.id_type}
                       onChange={(e) => setEditContactFormData({ ...editContactFormData, id_type: e.target.value })}
-                      placeholder="e.g., national_id"
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                    />
+                    >
+                      <option value="">Select type</option>
+                      {editContactFormData.id_type && !ID_TYPE_OPTIONS.some((t) => t.value === editContactFormData.id_type) && (
+                        <option value={editContactFormData.id_type}>{editContactFormData.id_type}</option>
+                      )}
+                      {ID_TYPE_OPTIONS.map((t) => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
                     {fieldError(editContactErrors.id_type)}
                   </div>
                   <div className="md:col-span-2">
@@ -1693,13 +1700,19 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       ID Type
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={contactFormData.id_type}
                       onChange={(e) => setContactFormData({ ...contactFormData, id_type: e.target.value })}
-                      placeholder="e.g., national_id"
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                    />
+                    >
+                      <option value="">Select type</option>
+                      {contactFormData.id_type && !ID_TYPE_OPTIONS.some((t) => t.value === contactFormData.id_type) && (
+                        <option value={contactFormData.id_type}>{contactFormData.id_type}</option>
+                      )}
+                      {ID_TYPE_OPTIONS.map((t) => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
                     {fieldError(contactErrors.id_type)}
                   </div>
                   <div className="md:col-span-2">

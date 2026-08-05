@@ -12,6 +12,7 @@ import {
   UserOAuthProvider, UserAuthReset, UserStudentContact, UserDependant, DependantSearchResult,
 } from '@/lib/users';
 import { COUNTRIES } from '@/lib/countries';
+import { ID_TYPE_OPTIONS } from '@/lib/idTypes';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
 type Tab = 'details' | 'oauth' | 'auth-reset' | 'student-contact' | 'dependants';
@@ -459,8 +460,16 @@ export default function SystemUserDetail({ personId }: { personId: string }) {
                       </div>
                       <div>
                         <label className={labelClass}>ID Type</label>
-                        <input className={fieldClass} value={formData.id_type}
-                          onChange={e => setFormData(p => ({ ...p, id_type: e.target.value }))} />
+                        <select className={fieldClass} value={formData.id_type}
+                          onChange={e => setFormData(p => ({ ...p, id_type: e.target.value }))}>
+                          <option value="">Select type</option>
+                          {formData.id_type && !ID_TYPE_OPTIONS.some(t => t.value === formData.id_type) && (
+                            <option value={formData.id_type}>{formData.id_type}</option>
+                          )}
+                          {ID_TYPE_OPTIONS.map(t => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   </div>
