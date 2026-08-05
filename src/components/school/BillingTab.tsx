@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Receipt, Download, Plus, Calendar, DollarSign, AlertCircle, FileText, Settings, Save, X, MapPin, Mail, Phone, ChevronDown } from 'lucide-react';
+import { Receipt, Download, Plus, Calendar, FileText, Settings, Save, X, MapPin } from 'lucide-react';
 import posthog from 'posthog-js';
 import { billingApi, Invoice, BillingConfig, BillingDetails, SchoolPlan } from '@/lib/billing';
+import { parseApiError } from '@/lib/apiError';
 import { SchoolStatus, billingStateText } from '@/lib/schoolStatus';
 import { userSetupService } from '@/lib/userSetupService';
 
@@ -53,6 +54,10 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
     billing_year: new Date().getFullYear(),
     notes: '',
   });
+
+  const [configErrors, setConfigErrors] = useState<Record<string, string>>({});
+  const [detailsErrors, setDetailsErrors] = useState<Record<string, string>>({});
+  const [planErrors, setPlanErrors] = useState<Record<string, string>>({});
 
   const [configForm, setConfigForm] = useState<Partial<BillingConfig>>({
     student_unit_price: '',
@@ -187,6 +192,7 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
   const handleUpdatePlan = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingPlan(true);
+    setPlanErrors({});
     try {
       const updated = await billingApi.updateSchoolPlan(schoolId, {
         plan_type: planForm.plan_type as 'monthly' | 'annual',
@@ -202,7 +208,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
       addToast({ title: 'Success', message: 'Billing plan updated successfully!', variant: 'success' });
     } catch (error) {
       console.error('Error updating plan:', error);
-      addToast({ title: 'Error', message: 'Failed to update billing plan', variant: 'error' });
+      const { message, fieldErrors } = parseApiError(error);
+      setPlanErrors(fieldErrors);
+      addToast({ title: 'Error', message, variant: 'error' });
     } finally {
       setSavingPlan(false);
     }
@@ -241,6 +249,7 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
   const handleUpdateConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingConfig(true);
+    setConfigErrors({});
     try {
       const updated = await billingApi.updateBillingConfig(schoolId, {
         student_unit_price: configForm.student_unit_price,
@@ -255,7 +264,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
       addToast({ title: 'Success', message: 'Billing config updated successfully!', variant: 'success' });
     } catch (error) {
       console.error('Error updating config:', error);
-      addToast({ title: 'Error', message: 'Failed to update billing config', variant: 'error' });
+      const { message, fieldErrors } = parseApiError(error);
+      setConfigErrors(fieldErrors);
+      addToast({ title: 'Error', message, variant: 'error' });
     } finally {
       setSavingConfig(false);
     }
@@ -264,6 +275,7 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
   const handleUpdateDetails = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingDetails(true);
+    setDetailsErrors({});
     try {
       const updated = await billingApi.updateBillingDetails(schoolId, {
         billing_contact_name: detailsForm.billing_contact_name,
@@ -283,7 +295,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
       addToast({ title: 'Success', message: 'Billing details updated successfully!', variant: 'success' });
     } catch (error) {
       console.error('Error updating details:', error);
-      addToast({ title: 'Error', message: 'Failed to update billing details', variant: 'error' });
+      const { message, fieldErrors } = parseApiError(error);
+      setDetailsErrors(fieldErrors);
+      addToast({ title: 'Error', message, variant: 'error' });
     } finally {
       setSavingDetails(false);
     }
@@ -572,7 +586,7 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                   </div>
                 </div>
                 <button
-                  onClick={() => setShowDetailsForm(true)}
+                  onClick={() => { setDetailsErrors({}); setShowDetailsForm(true); }}
                   className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline font-medium flex-shrink-0 ml-4"
                 >
                   Edit
@@ -616,7 +630,7 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                   </div>
                 </div>
                 <button
-                  onClick={() => setShowConfigForm(true)}
+                  onClick={() => { setConfigErrors({}); setShowConfigForm(true); }}
                   className="text-sm text-[#1A1A6D] dark:text-[#20B2AA] hover:underline font-medium flex-shrink-0 ml-4"
                 >
                   Edit
@@ -695,7 +709,7 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
               </div>
             </div>
             <button
-              onClick={() => setShowPlanForm(true)}
+              onClick={() => { setPlanErrors({}); setShowPlanForm(true); }}
               className="text-sm text-purple-600 dark:text-purple-400 hover:underline font-medium flex-shrink-0 ml-4"
             >
               Edit
@@ -751,6 +765,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                     required
                     min="0"
                   />
+                  {planErrors.billing_student_count && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">{planErrors.billing_student_count}</p>
+                  )}
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -763,6 +780,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     required
                   />
+                  {planErrors.next_invoice_date && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">{planErrors.next_invoice_date}</p>
+                  )}
                 </div>
                 {planForm.plan_type === 'annual' && (
                   <>
@@ -776,6 +796,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                         onChange={(e) => setPlanForm({ ...planForm, annual_start_date: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       />
+                      {planErrors.annual_start_date && (
+                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">{planErrors.annual_start_date}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -787,6 +810,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                         onChange={(e) => setPlanForm({ ...planForm, annual_end_date: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       />
+                      {planErrors.annual_end_date && (
+                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">{planErrors.annual_end_date}</p>
+                      )}
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -799,6 +825,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                         onChange={(e) => setPlanForm({ ...planForm, annual_unit_price: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       />
+                      {planErrors.annual_unit_price && (
+                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">{planErrors.annual_unit_price}</p>
+                      )}
                     </div>
                   </>
                 )}
@@ -863,6 +892,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                       onChange={(e) => setDetailsForm({ ...detailsForm, company_name: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {detailsErrors.company_name && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{detailsErrors.company_name}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -874,6 +906,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                       onChange={(e) => setDetailsForm({ ...detailsForm, tax_id: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {detailsErrors.tax_id && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{detailsErrors.tax_id}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -885,6 +920,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                       onChange={(e) => setDetailsForm({ ...detailsForm, billing_contact_name: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {detailsErrors.billing_contact_name && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{detailsErrors.billing_contact_name}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -896,6 +934,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                       onChange={(e) => setDetailsForm({ ...detailsForm, billing_contact_email: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {detailsErrors.billing_contact_email && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{detailsErrors.billing_contact_email}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -907,6 +948,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                       onChange={(e) => setDetailsForm({ ...detailsForm, billing_contact_phone: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {detailsErrors.billing_contact_phone && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{detailsErrors.billing_contact_phone}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -930,6 +974,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                       onChange={(e) => setDetailsForm({ ...detailsForm, address_line_1: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {detailsErrors.address_line_1 && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{detailsErrors.address_line_1}</p>
+                    )}
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -941,6 +988,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                       onChange={(e) => setDetailsForm({ ...detailsForm, address_line_2: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {detailsErrors.address_line_2 && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{detailsErrors.address_line_2}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -952,6 +1002,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                       onChange={(e) => setDetailsForm({ ...detailsForm, city: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {detailsErrors.city && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{detailsErrors.city}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -963,6 +1016,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                       onChange={(e) => setDetailsForm({ ...detailsForm, postal_code: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {detailsErrors.postal_code && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{detailsErrors.postal_code}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -974,6 +1030,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                       onChange={(e) => setDetailsForm({ ...detailsForm, country: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {detailsErrors.country && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{detailsErrors.country}</p>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-2 pt-4">
@@ -1139,6 +1198,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   required
                 />
+                {configErrors.student_unit_price && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{configErrors.student_unit_price}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1154,6 +1216,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   required
                 />
+                {configErrors.vat_rate && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{configErrors.vat_rate}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1166,6 +1231,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   required
                 />
+                {configErrors.invoice_prefix && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{configErrors.invoice_prefix}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1179,6 +1247,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                   required
                   min="0"
                 />
+                {configErrors.invoice_due_days && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{configErrors.invoice_due_days}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1192,6 +1263,9 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                   required
                   min="0"
                 />
+                {configErrors.min_admission_days && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{configErrors.min_admission_days}</p>
+                )}
               </div>
               <div className="flex items-center justify-between gap-4 border-t border-gray-200 dark:border-gray-700 pt-4">
                 <div>

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { schoolsApi, StudentDetails, StudentContact, StudentEnrollment, AttendanceCalendarMonth, AttendanceBodyCheck, StudentReport } from '@/lib/schools';
+import { parseApiError } from '@/lib/apiError';
+import { COUNTRIES } from '@/lib/countries';
 import { AlertCircle, Loader2, Save, Upload, Users, GraduationCap, Contact, ChevronDown, ChevronRight, Check, X, Plus, Calendar, ChevronLeft, FileText, Trash2, Download } from 'lucide-react';
 import axios from 'axios';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -17,37 +19,6 @@ interface StudentManageProps {
 type TabKey = 'details' | 'contacts' | 'enrollments' | 'attendance' | 'reports';
 type StudentStatus = 'active' | 'left' | 'graduated';
 type RequiredStudentGender = 'MALE' | 'FEMALE';
-
-// ISO 3166-1 alpha-2 codes; names are resolved at runtime.
-const COUNTRY_CODES = [
-  'AD', 'AE', 'AF', 'AG', 'AI', 'AL', 'AM', 'AO', 'AQ', 'AR', 'AS', 'AT', 'AU', 'AW', 'AX', 'AZ',
-  'BA', 'BB', 'BD', 'BE', 'BF', 'BG', 'BH', 'BI', 'BJ', 'BL', 'BM', 'BN', 'BO', 'BQ', 'BR', 'BS',
-  'BT', 'BV', 'BW', 'BY', 'BZ', 'CA', 'CC', 'CD', 'CF', 'CG', 'CH', 'CI', 'CK', 'CL', 'CM', 'CN',
-  'CO', 'CR', 'CU', 'CV', 'CW', 'CX', 'CY', 'CZ', 'DE', 'DJ', 'DK', 'DM', 'DO', 'DZ', 'EC', 'EE',
-  'EG', 'EH', 'ER', 'ES', 'ET', 'FI', 'FJ', 'FK', 'FM', 'FO', 'FR', 'GA', 'GB', 'GD', 'GE', 'GF',
-  'GG', 'GH', 'GI', 'GL', 'GM', 'GN', 'GP', 'GQ', 'GR', 'GS', 'GT', 'GU', 'GW', 'GY', 'HK', 'HM',
-  'HN', 'HR', 'HT', 'HU', 'ID', 'IE', 'IL', 'IM', 'IN', 'IO', 'IQ', 'IR', 'IS', 'IT', 'JE', 'JM',
-  'JO', 'JP', 'KE', 'KG', 'KH', 'KI', 'KM', 'KN', 'KP', 'KR', 'KW', 'KY', 'KZ', 'LA', 'LB', 'LC',
-  'LI', 'LK', 'LR', 'LS', 'LT', 'LU', 'LV', 'LY', 'MA', 'MC', 'MD', 'ME', 'MF', 'MG', 'MH', 'MK',
-  'ML', 'MM', 'MN', 'MO', 'MP', 'MQ', 'MR', 'MS', 'MT', 'MU', 'MV', 'MW', 'MX', 'MY', 'MZ', 'NA',
-  'NC', 'NE', 'NF', 'NG', 'NI', 'NL', 'NO', 'NP', 'NR', 'NU', 'NZ', 'OM', 'PA', 'PE', 'PF', 'PG',
-  'PH', 'PK', 'PL', 'PM', 'PN', 'PR', 'PS', 'PT', 'PW', 'PY', 'QA', 'RE', 'RO', 'RS', 'RU', 'RW',
-  'SA', 'SB', 'SC', 'SD', 'SE', 'SG', 'SH', 'SI', 'SJ', 'SK', 'SL', 'SM', 'SN', 'SO', 'SR', 'SS',
-  'ST', 'SV', 'SX', 'SY', 'SZ', 'TC', 'TD', 'TF', 'TG', 'TH', 'TJ', 'TK', 'TL', 'TM', 'TN', 'TO',
-  'TR', 'TT', 'TV', 'TW', 'TZ', 'UA', 'UG', 'UM', 'US', 'UY', 'UZ', 'VA', 'VC', 'VE', 'VG', 'VI',
-  'VN', 'VU', 'WF', 'WS', 'YE', 'YT', 'ZA', 'ZM', 'ZW',
-];
-
-const COUNTRIES: { code: string; name: string }[] = (() => {
-  try {
-    const displayNames = new Intl.DisplayNames(['en'], { type: 'region' });
-    return COUNTRY_CODES
-      .map((code) => ({ code, name: displayNames.of(code) || code }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  } catch {
-    return COUNTRY_CODES.map((code) => ({ code, name: code }));
-  }
-})();
 
 const getInitialTab = (): TabKey => {
   if (typeof window !== 'undefined') {
@@ -73,6 +44,8 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
   const [contactToDelete, setContactToDelete] = useState<StudentContact | null>(null);
   const [deletingContact, setDeletingContact] = useState(false);
+  const [contactErrors, setContactErrors] = useState<Record<string, string>>({});
+  const [editContactErrors, setEditContactErrors] = useState<Record<string, string>>({});
 
   const [details, setDetails] = useState<StudentDetails | null>(null);
   const [contacts, setContacts] = useState<StudentContact[]>([]);
@@ -155,6 +128,10 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
       setToasts((t) => t.filter((x) => x.id !== id));
     }, 4000);
   };
+
+  // Renders a validation error message under a form field, if present.
+  const fieldError = (msg?: string) =>
+    msg ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">{msg}</p> : null;
 
   // Update hash when tab changes without pushing a new history entry
   useEffect(() => {
@@ -343,6 +320,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
   const handleCreateContact = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreatingContact(true);
+    setContactErrors({});
     try {
       const newContact = await schoolsApi.createStudentContact(schoolId, studentId, {
         first_name: contactFormData.first_name.trim(),
@@ -381,7 +359,9 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
       addToast({ title: 'Success', message: 'Contact created successfully!', variant: 'success' });
     } catch (err) {
       console.error(err);
-      addToast({ title: 'Error', message: 'Failed to create contact.', variant: 'error' });
+      const { message, fieldErrors } = parseApiError(err);
+      setContactErrors(fieldErrors);
+      addToast({ title: 'Error', message, variant: 'error' });
     } finally {
       setCreatingContact(false);
     }
@@ -389,6 +369,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
 
   const openEditContactModal = (contact: StudentContact) => {
     setEditingContactId(contact.id);
+    setEditContactErrors({});
     setEditContactFormData({
       person_id: contact.person_id,
       first_name: contact.first_name,
@@ -416,6 +397,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
     if (!editingContactId) return;
 
     setUpdatingContact(true);
+    setEditContactErrors({});
     try {
       const updatedContact = await schoolsApi.updateStudentContact(schoolId, studentId, editingContactId, {
         person_id: editContactFormData.person_id,
@@ -444,7 +426,9 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
       addToast({ title: 'Success', message: 'Contact updated successfully!', variant: 'success' });
     } catch (err) {
       console.error(err);
-      addToast({ title: 'Error', message: 'Failed to update contact.', variant: 'error' });
+      const { message, fieldErrors } = parseApiError(err);
+      setEditContactErrors(fieldErrors);
+      addToast({ title: 'Error', message, variant: 'error' });
     } finally {
       setUpdatingContact(false);
     }
@@ -634,7 +618,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
             <div className="space-y-4">
               <div className="flex justify-end">
                 <button
-                  onClick={() => setShowCreateContactModal(true)}
+                  onClick={() => { setContactErrors({}); setShowCreateContactModal(true); }}
                   className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity"
                 >
                   <Plus className="w-4 h-4" />
@@ -1374,6 +1358,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       required
                     />
+                    {fieldError(editContactErrors.first_name)}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1386,6 +1371,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       required
                     />
+                    {fieldError(editContactErrors.last_name)}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1397,6 +1383,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       onChange={(e) => setEditContactFormData({ ...editContactFormData, email: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {fieldError(editContactErrors.email)}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1418,6 +1405,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       <option value="EMERGENCY_CONTACT">Emergency Contact</option>
                       <option value="DRIVER">Driver</option>
                     </select>
+                    {fieldError(editContactErrors.role)}
                   </div>
                 </div>
               </div>
@@ -1444,6 +1432,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                         </option>
                       ))}
                     </select>
+                    {fieldError(editContactErrors.id_country)}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1456,6 +1445,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       placeholder="e.g., national_id"
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {fieldError(editContactErrors.id_type)}
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1467,6 +1457,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       onChange={(e) => setEditContactFormData({ ...editContactFormData, id_full: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {fieldError(editContactErrors.id_full)}
                   </div>
                 </div>
               </div>
@@ -1526,6 +1517,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       onChange={(e) => setEditContactFormData({ ...editContactFormData, valid_from: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {fieldError(editContactErrors.valid_from)}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1537,6 +1529,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       onChange={(e) => setEditContactFormData({ ...editContactFormData, valid_to: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {fieldError(editContactErrors.valid_to)}
                   </div>
                 </div>
               </div>
@@ -1553,6 +1546,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     rows={3}
                   />
+                  {fieldError(editContactErrors.notes)}
                 </div>
               </div>
 
@@ -1621,6 +1615,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       required
                     />
+                    {fieldError(contactErrors.first_name)}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1633,6 +1628,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       required
                     />
+                    {fieldError(contactErrors.last_name)}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1644,6 +1640,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       onChange={(e) => setContactFormData({ ...contactFormData, email: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {fieldError(contactErrors.email)}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1665,6 +1662,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       <option value="EMERGENCY_CONTACT">Emergency Contact</option>
                       <option value="DRIVER">Driver</option>
                     </select>
+                    {fieldError(contactErrors.role)}
                   </div>
                 </div>
               </div>
@@ -1689,6 +1687,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                         </option>
                       ))}
                     </select>
+                    {fieldError(contactErrors.id_country)}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1701,6 +1700,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       placeholder="e.g., national_id"
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {fieldError(contactErrors.id_type)}
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1712,6 +1712,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       onChange={(e) => setContactFormData({ ...contactFormData, id_full: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {fieldError(contactErrors.id_full)}
                   </div>
                 </div>
               </div>
@@ -1773,6 +1774,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       onChange={(e) => setContactFormData({ ...contactFormData, valid_from: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {fieldError(contactErrors.valid_from)}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1784,6 +1786,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       onChange={(e) => setContactFormData({ ...contactFormData, valid_to: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     />
+                    {fieldError(contactErrors.valid_to)}
                   </div>
                 </div>
               </div>
@@ -1801,6 +1804,7 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     rows={3}
                   />
+                  {fieldError(contactErrors.notes)}
                 </div>
               </div>
 

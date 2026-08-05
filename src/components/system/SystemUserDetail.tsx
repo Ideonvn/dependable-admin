@@ -11,6 +11,7 @@ import {
   systemUsersApi, SystemUser,
   UserOAuthProvider, UserAuthReset, UserStudentContact, UserDependant, DependantSearchResult,
 } from '@/lib/users';
+import { COUNTRIES } from '@/lib/countries';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
 type Tab = 'details' | 'oauth' | 'auth-reset' | 'student-contact' | 'dependants';
@@ -445,8 +446,16 @@ export default function SystemUserDetail({ personId }: { personId: string }) {
                       </div>
                       <div>
                         <label className={labelClass}>ID Country</label>
-                        <input className={fieldClass} value={formData.id_country}
-                          onChange={e => setFormData(p => ({ ...p, id_country: e.target.value }))} />
+                        <select className={fieldClass} value={formData.id_country}
+                          onChange={e => setFormData(p => ({ ...p, id_country: e.target.value }))}>
+                          <option value="">Select country</option>
+                          {formData.id_country && !COUNTRIES.some(c => c.code === formData.id_country) && (
+                            <option value={formData.id_country}>{formData.id_country}</option>
+                          )}
+                          {COUNTRIES.map(c => (
+                            <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <label className={labelClass}>ID Type</label>
