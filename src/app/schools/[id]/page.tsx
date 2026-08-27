@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import posthog from 'posthog-js';
-import { ArrowLeft, Building2, Users, BookOpen, UserCog, ClipboardCheck, Receipt, Calendar, CalendarDays, Bell, Download, RefreshCw, Loader2, FileText } from 'lucide-react';
+import { ArrowLeft, Building2, Users, BookOpen, UserCog, ClipboardCheck, Receipt, Calendar, CalendarDays, Bell, Images, Download, RefreshCw, Loader2, FileText } from 'lucide-react';
 import { schoolsApi, School, SchoolReportResponse } from '@/lib/schools';
 import SchoolDetailsTab from '@/components/school/SchoolDetailsTab';
 import StudentsTab from '@/components/school/StudentsTab';
@@ -14,14 +14,15 @@ import BillingTab from '@/components/school/BillingTab';
 import SchoolYearsTab from '@/components/school/SchoolYearsTab';
 import CalendarTab from '@/components/school/calendar/CalendarTab';
 import NoticesTab from '@/components/school/notices/NoticesTab';
+import GalleryTab from '@/components/school/gallery/GalleryTab';
 import LoggingTab from '@/components/school/LoggingTab';
 
-type TabType = 'details' | 'students' | 'membership' | 'classrooms' | 'enrollments' | 'schoolYears' | 'billing' | 'calendar' | 'notices' | 'logging';
+type TabType = 'details' | 'students' | 'membership' | 'classrooms' | 'enrollments' | 'schoolYears' | 'billing' | 'calendar' | 'notices' | 'gallery' | 'logging';
 
 const getInitialTab = (): TabType => {
   if (typeof window !== 'undefined') {
     const hash = window.location.hash.slice(1);
-    if (['details', 'students', 'membership', 'classrooms', 'enrollments', 'schoolYears', 'billing', 'calendar', 'notices', 'logging'].includes(hash)) {
+    if (['details', 'students', 'membership', 'classrooms', 'enrollments', 'schoolYears', 'billing', 'calendar', 'notices', 'gallery', 'logging'].includes(hash)) {
       return hash as TabType;
     }
   }
@@ -105,6 +106,7 @@ export default function SchoolDetailPage() {
     { id: 'schoolYears' as TabType, label: 'School Years', icon: Calendar },
     { id: 'calendar' as TabType, label: 'Calendar', icon: CalendarDays },
     { id: 'notices' as TabType, label: 'Notices', icon: Bell },
+    { id: 'gallery' as TabType, label: 'Gallery', icon: Images },
     { id: 'logging' as TabType, label: 'Logging', icon: FileText },
     { id: 'billing' as TabType, label: 'Billing', icon: Receipt },
   ];
@@ -251,6 +253,7 @@ export default function SchoolDetailPage() {
         {activeTab === 'billing' && <BillingTab schoolId={school.id} status={school.status} />}
         {activeTab === 'calendar' && <CalendarTab schoolId={school.id} />}
         {activeTab === 'notices' && <NoticesTab schoolId={school.id} />}
+        {activeTab === 'gallery' && <GalleryTab schoolId={school.id} schoolName={school.name} />}
         {activeTab === 'logging' && <LoggingTab schoolId={school.id} />}
       </div>
     </main>
