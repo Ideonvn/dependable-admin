@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, Building2, ClipboardList, Users, FileText, Loader2 } from 'lucide-react';
+import { RefreshCw, Building2, ClipboardList, Users, FileText, MailX, Loader2 } from 'lucide-react';
 import { schoolsApi, School } from '@/lib/schools';
 import { SCHOOL_STATUSES, SCHOOL_STATUS_META } from '@/lib/schoolStatus';
 import SchoolCardMain from '@/components/SchoolCardMain';
@@ -84,6 +84,17 @@ export default function DashboardClient() {
             >
               {navigatingTo === '/system/users' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Users className="w-5 h-5" />}
               System Users
+            </button>
+          )}
+
+          {isSuperAdmin && (
+            <button
+              onClick={() => navigate('/system/email-bounces')}
+              disabled={navigatingTo !== null}
+              className="flex items-center gap-2 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg hover:opacity-90 transition-all shadow-lg hover:shadow-xl font-medium disabled:opacity-60"
+            >
+              {navigatingTo === '/system/email-bounces' ? <Loader2 className="w-5 h-5 animate-spin" /> : <MailX className="w-5 h-5" />}
+              Email Blocklist
             </button>
           )}
 
