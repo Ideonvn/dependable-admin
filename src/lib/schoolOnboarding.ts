@@ -10,6 +10,18 @@ export interface SchoolOnboardingRecord {
   class_name: string;
   status: 'pending' | 'validated' | 'submitted' | 'error' | 'created';
   error_message?: string;
+  possible_duplicate?: boolean;
+  duplicate_reason?: string | null;
+}
+
+export interface CSVImportResult {
+  school_id: string;
+  batch_id: string;
+  total_records: number;
+  successful_imports: number;
+  failed_imports: number;
+  duplicate_count: number;
+  errors: { row: number; error: string }[];
 }
 
 export interface School {
@@ -173,6 +185,18 @@ export const schoolOnboardingApi = {
       status: (data.status || '').toString().toLowerCase() as SchoolOnboardingRecord['status'],
       error_message: data.error_message,
     };
+  },
+
+  // Import a CSV of students into an existing school. No trailing slash: a 307 would re-upload the file.
+  importRecords: async (schoolId: string, csvFile: File): Promise<CSVImportResult> => {
+    const form = new FormData();
+    form.append('csv_file', csvFile);
+    const response = await apiClient.post(
+      `/admin/onboarding/schools/${schoolId}/records/import`,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data as CSVImportResult;
   },
 
   // Delete a record (DELETE)

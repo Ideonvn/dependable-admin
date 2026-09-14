@@ -1,6 +1,9 @@
 # School Onboarding CSV Format
 
-This document describes the CSV format expected by the school onboarding import on the New School Onboarding page (`/onboarding/create`).
+This document describes the CSV format expected by the school onboarding import. The same format and the same file work in two places:
+
+- **New School Onboarding** (`/onboarding/create`) — creates the school and imports the students in one submit.
+- **Bulk add from CSV** (the caret beside **Add** on `/onboarding/[id]`) — imports more students into a school that already exists. Rows land as pending records; press Validate afterwards.
 
 A downloadable sample lives at [`public/sample-onboarding.csv`](public/sample-onboarding.csv) and is linked from the upload form.
 

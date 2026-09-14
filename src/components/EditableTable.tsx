@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useState, useMemo, useEffect } from 'react';
-import { Edit2, Trash2, Check, X, ChevronDown, ChevronRight, AlertCircle, Clock, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
+import { Edit2, Trash2, Check, X, ChevronDown, ChevronRight, AlertCircle, AlertTriangle, Clock, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
 import { SchoolOnboardingRecord } from '@/lib/schoolOnboarding';
 import { onboardingApi, RecordDetails, RecordAction } from '@/lib/schools';
 
@@ -376,7 +376,16 @@ export default function EditableTable({ records, onUpdate, onDelete, onResetStat
                           )}
                         </button>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{record.first_name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                        <span className="inline-flex items-center gap-1.5">
+                          {record.first_name}
+                          {record.possible_duplicate && (
+                            <span title={record.duplicate_reason ?? undefined} aria-label={record.duplicate_reason ?? 'Possible duplicate'}>
+                              <AlertTriangle className="w-4 h-4 text-amber-500" />
+                            </span>
+                          )}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{record.last_name}</td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 capitalize">{record.gender ?? 'Unknown'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{record.date_of_birth}</td>

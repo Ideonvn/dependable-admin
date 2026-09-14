@@ -16,6 +16,7 @@ import EditableTable from '@/components/EditableTable';
 import ClassSummaryTable from '@/components/ClassSummaryTable';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import AlertDialog from '@/components/AlertDialog';
+import BulkAddModal from '@/components/BulkAddModal';
 import SchoolProfileImage from '@/components/SchoolProfileImage';
 import SchoolStatusBadge from '@/components/SchoolStatusBadge';
 import { userSetupService } from '@/lib/userSetupService';
@@ -49,6 +50,8 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
   const [validateDialog, setValidateDialog] = useState(false);
   const [submitDialog, setSubmitDialog] = useState(false);
   const [submitClassesDialog, setSubmitClassesDialog] = useState(false);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [bulkAddOpen, setBulkAddOpen] = useState(false);
   // Auto-submit config
   const [autoSubmit, setAutoSubmit] = useState(false);
   const [configMenuOpen, setConfigMenuOpen] = useState(false);
@@ -562,14 +565,45 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Student Records</h2>
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={handleAdd}
-                    disabled={newRecordId !== null}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 dark:bg-green-700 text-white rounded-lg hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add
-                  </button>
+                  <div className="relative flex">
+                    <button
+                      onClick={handleAdd}
+                      disabled={newRecordId !== null}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 dark:bg-green-700 text-white rounded-l-lg hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAddMenuOpen((o) => !o)}
+                      disabled={newRecordId !== null}
+                      aria-label="Add options"
+                      aria-expanded={addMenuOpen}
+                      title={newRecordId !== null ? 'Save or cancel the new row first' : undefined}
+                      className="flex items-center px-2 py-2 bg-green-600 dark:bg-green-700 text-white rounded-r-lg border-l border-green-500/50 hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+
+                    {addMenuOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setAddMenuOpen(false)} />
+                        <div className="absolute left-0 top-full mt-2 w-48 z-50 bg-white dark:bg-[#1a1a1a] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAddMenuOpen(false);
+                              setBulkAddOpen(true);
+                            }}
+                            className="flex w-full items-center px-3 py-1.5 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                          >
+                            Bulk add from CSV
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                   <button
                     onClick={handleValidate}
                     disabled={actionLoading !== null}
@@ -710,6 +744,16 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
         confirmText="Create"
         cancelText="Cancel"
         variant="info"
+      />
+
+      <BulkAddModal
+        isOpen={bulkAddOpen}
+        onClose={() => setBulkAddOpen(false)}
+        onDone={() => {
+          setBulkAddOpen(false);
+          loadOnboardingData(false);
+        }}
+        schoolId={id}
       />
 
       <AlertDialog

@@ -1036,6 +1036,8 @@ export const onboardingApi = {
           class_name: r.class_name || '',
           status,
           error_message: r.error_message,
+          possible_duplicate: r.possible_duplicate === true,
+          duplicate_reason: r.duplicate_reason ?? null,
         } as SchoolOnboardingRecord;
       });
     } catch (error) {
