@@ -190,6 +190,33 @@ export interface AttendanceCalendarMonth {
   events: AttendanceCalendarDay[];
 }
 
+export interface ClassroomBodyCheckEntry {
+  id: string;
+  checked_at: string; // ISO datetime, UTC
+  performed_by: string | null; // null when the staff account is gone
+  front: BodyCheckMarker[];
+  back: BodyCheckMarker[];
+}
+
+export interface ClassroomBodyCheckStudent {
+  id: string;
+  dependant_id: string;
+  full_name: string | null;
+  image_filename: string | null;
+  presence_status: 'in' | 'out' | 'unknown';
+  last_checkin_at: string | null;
+  body_checks: ClassroomBodyCheckEntry[]; // empty === not checked
+  checked_in: boolean; // had a check-in on `date` (unlike last_checkin_at, holds for past dates)
+  // Has a check on `date` but has since left or moved classroom: history, not a compliance miss
+  no_longer_enrolled: boolean;
+}
+
+export interface ClassroomBodyCheckDay {
+  classroom_id: string;
+  date: string; // YYYY-MM-DD, UTC day
+  students: ClassroomBodyCheckStudent[]; // full roster, ordered by name
+}
+
 export interface Membership {
   id: string;
   user_id: string;
@@ -648,6 +675,24 @@ export const schoolsApi = {
     } catch (error) {
       console.error('Error fetching classrooms:', error);
       return [];
+    }
+  },
+
+  // Rethrows: an empty roster must be distinguishable from a failed request
+  getClassroomBodyChecks: async (
+    schoolId: string,
+    classroomId: string,
+    date?: string
+  ): Promise<ClassroomBodyCheckDay> => {
+    try {
+      const response = await apiClient.get<ClassroomBodyCheckDay>(
+        `/schools/${schoolId}/classrooms/${classroomId}/body-checks`,
+        { params: date ? { date } : undefined }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching classroom body checks:', error);
+      throw error;
     }
   },
 

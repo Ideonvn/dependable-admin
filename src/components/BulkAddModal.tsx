@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, Upload } from 'lucide-react';
 import axios from 'axios';
 import { schoolOnboardingApi, CSVImportResult } from '@/lib/schoolOnboarding';
+import ModalOverlay from '@/components/ModalOverlay';
 
 interface BulkAddModalProps {
   isOpen: boolean;
@@ -64,7 +65,7 @@ export default function BulkAddModal({ isOpen, onClose, onDone, schoolId }: Bulk
   const close = result ? onDone : onClose;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-75 flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <ModalOverlay>
       <div className="bg-white dark:bg-[#121212] rounded-lg shadow-xl border border-gray-200 dark:border-gray-800 max-w-lg w-full my-8">
         {/* Header */}
         <div className="flex items-start justify-between p-6 border-b border-gray-200 dark:border-gray-800">
@@ -197,6 +198,6 @@ export default function BulkAddModal({ isOpen, onClose, onDone, schoolId }: Bulk
           </>
         )}
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

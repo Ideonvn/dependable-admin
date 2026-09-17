@@ -5,6 +5,7 @@ import { X, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import posthog from 'posthog-js';
 import { schoolsApi, Classroom, StudentGender } from '@/lib/schools';
+import ModalOverlay from '@/components/ModalOverlay';
 
 interface OnboardStudentModalProps {
   isOpen: boolean;
@@ -133,7 +134,7 @@ export default function OnboardStudentModal({
     'w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-75 flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <ModalOverlay>
       <div className="bg-white dark:bg-[#121212] rounded-lg shadow-xl border border-gray-200 dark:border-gray-800 max-w-2xl w-full my-8">
         {/* Header */}
         <div className="flex items-start justify-between p-6 border-b border-gray-200 dark:border-gray-800">
@@ -309,6 +310,6 @@ export default function OnboardStudentModal({
           </div>
         </form>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

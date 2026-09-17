@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import posthog from 'posthog-js';
 import { schoolsApi, Classroom } from '@/lib/schools';
+import ModalOverlay from '@/components/ModalOverlay';
 
 type RequiredStudentGender = 'MALE' | 'FEMALE';
 
@@ -183,7 +184,7 @@ export default function EnrollStudentModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-75 flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <ModalOverlay>
       <div className="bg-white dark:bg-[#121212] rounded-lg shadow-xl border border-gray-200 dark:border-gray-800 max-w-2xl w-full my-8">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
@@ -466,6 +467,6 @@ export default function EnrollStudentModal({
           </div>
         </form>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

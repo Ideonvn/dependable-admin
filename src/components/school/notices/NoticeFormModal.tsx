@@ -7,6 +7,7 @@ import { X, AlertCircle, Trash2, Paperclip, Upload, XCircle } from 'lucide-react
 import { Notice, NoticeScope, NoticePayload, AttachmentPayload, NoticeAttachment } from '@/types/notices';
 import { Classroom, Student } from '@/lib/schools';
 import { createNotice, updateNotice, deleteNotice, uploadAttachment } from './noticesApi';
+import ModalOverlay from '@/components/ModalOverlay';
 
 interface NoticeFormModalProps {
   mode: 'create' | 'edit';
@@ -194,7 +195,7 @@ export default function NoticeFormModal({
   const color = scopeColor(scope, isDark);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-75 flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <ModalOverlay>
       <div className="bg-white dark:bg-[#121212] rounded-lg shadow-xl border border-gray-200 dark:border-gray-800 max-w-lg w-full my-8">
         {/* Coloured top bar */}
         <div className="h-1.5 rounded-t-lg" style={{ backgroundColor: color }} />
@@ -465,6 +466,6 @@ export default function NoticeFormModal({
           </div>
         </form>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

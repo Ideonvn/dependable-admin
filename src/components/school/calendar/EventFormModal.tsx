@@ -12,6 +12,7 @@ import {
 import { schoolsApi, Classroom, Student } from '@/lib/schools';
 import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from './calendarApi';
 import RecurringDeletePrompt from './RecurringDeletePrompt';
+import ModalOverlay from '@/components/ModalOverlay';
 
 interface EventFormModalProps {
   mode: 'create' | 'edit';
@@ -186,7 +187,7 @@ export default function EventFormModal({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-75 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <ModalOverlay>
         <div className="bg-white dark:bg-[#121212] rounded-lg shadow-xl border border-gray-200 dark:border-gray-800 max-w-lg w-full my-8">
           {/* Coloured top bar */}
           <div className="h-1.5 rounded-t-lg" style={{ backgroundColor: scopeColor }} />
@@ -492,7 +493,7 @@ export default function EventFormModal({
             </div>
           </form>
         </div>
-      </div>
+      </ModalOverlay>
 
       {showDeletePrompt && (
         <RecurringDeletePrompt

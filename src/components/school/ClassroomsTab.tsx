@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { BookOpen, Search, Plus, Users, Edit } from 'lucide-react';
 import { schoolsApi, Classroom } from '@/lib/schools';
 import EditClassroomModal from '@/components/EditClassroomModal';
@@ -161,7 +162,12 @@ export default function ClassroomsTab({ schoolId }: ClassroomsTabProps) {
                 </div>
 
                 {/* Body Check */}
-                <div className="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                <Link
+                  href={`/schools/${schoolId}/classrooms/${classroom.id}/body-checks`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-left rounded-b hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  title="View body checks"
+                >
                   <div className="flex-1">
                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Checked</div>
                     <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -174,7 +180,7 @@ export default function ClassroomsTab({ schoolId }: ClassroomsTabProps) {
                       {classroom.students_overview.body_check.markers}
                     </div>
                   </div>
-                </div>
+                </Link>
               </div>
             </div>
           ))}

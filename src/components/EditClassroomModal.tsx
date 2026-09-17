@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, AlertCircle, Upload, Trash2, Plus } from 'lucide-react';
 import { schoolsApi, Classroom, Membership, ClassroomTeacherAssignment } from '@/lib/schools';
 import ClassroomProfileImage from '@/components/ClassroomProfileImage';
+import ModalOverlay from '@/components/ModalOverlay';
 
 interface EditClassroomModalProps {
   isOpen: boolean;
@@ -159,7 +160,7 @@ export default function EditClassroomModal({
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-75 flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <ModalOverlay>
       <div className="bg-white dark:bg-[#121212] rounded-lg shadow-xl border border-gray-200 dark:border-gray-800 max-w-2xl w-full my-8">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
@@ -388,6 +389,6 @@ export default function EditClassroomModal({
           </div>
         </form>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

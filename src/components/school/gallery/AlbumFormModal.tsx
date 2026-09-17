@@ -9,6 +9,7 @@ import { AlbumPayload, GalleryAlbumSummary, GalleryScope } from '@/types/gallery
 import { Classroom, Student } from '@/lib/schools';
 import { parseApiError } from '@/lib/apiError';
 import { createAlbum, deleteAlbum, updateAlbum } from './galleryApi';
+import ModalOverlay from '@/components/ModalOverlay';
 
 interface AlbumFormModalProps {
   mode: 'create' | 'edit';
@@ -138,7 +139,7 @@ export default function AlbumFormModal({
     'w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 disabled:opacity-60';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-75 flex items-center justify-center z-[55] p-4 overflow-y-auto">
+    <ModalOverlay zClassName="z-[55]">
       <div className="bg-white dark:bg-[#121212] rounded-lg shadow-xl border border-gray-200 dark:border-gray-800 max-w-lg w-full my-8">
         <div className="h-1.5 rounded-t-lg" style={{ backgroundColor: color }} />
 
@@ -379,6 +380,6 @@ export default function AlbumFormModal({
           </div>
         </form>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }
