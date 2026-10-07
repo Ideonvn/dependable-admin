@@ -32,6 +32,22 @@ const getInitialTab = (): TabKey => {
   return 'details';
 };
 
+/**
+ * A whole non-negative number, or null when the field cannot supply one.
+ *
+ * weight_at_birth and length_at_birth are integer grams and millimetres on the
+ * API. This form used to label them kg and cm with a decimal step, so staff
+ * typed 3.5 for what the enrollment form calls 3400 — which came back as an
+ * int_from_float 422, and when the field was cleared as an int_type 422.
+ */
+const toWholeNumber = (value: string): number | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return Math.round(parsed);
+};
+
 export default function StudentManage({ schoolId, studentId }: StudentManageProps) {
   const [activeTab, setActiveTab] = useState<TabKey>(getInitialTab);
   const [loading, setLoading] = useState(true);
@@ -436,27 +452,45 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
     }
   };
 
+  
   const onSave = async () => {
+    // Checked before the request, not inside the catch: the API takes whole
+    // grams and millimetres and rejects null or a decimal, and parseApiError
+    // only knows how to read an axios failure — so a message thrown in here
+    // would still reach the operator as the generic "something went wrong".
+    const birthWeight = toWholeNumber(weightAtBirth);
+    const birthLength = toWholeNumber(lengthAtBirth);
+    if (birthWeight === null) {
+      addToast({ title: 'Error', message: 'Weight at birth is required, in whole grams.', variant: 'error' });
+      return;
+    }
+    if (birthLength === null) {
+      addToast({ title: 'Error', message: 'Length at birth is required, in whole millimetres.', variant: 'error' });
+      return;
+    }
+
     setSaving(true);
     try {
       if (!dependantId) {
         throw new Error('Dependant ID not available');
       }
-      await Promise.all([
-        schoolsApi.updateDependant(dependantId, {
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          date_of_birth: dob,
-          gender,
-          weight_at_birth: weightAtBirth ? parseFloat(weightAtBirth) : null,
-          length_at_birth: lengthAtBirth ? parseFloat(lengthAtBirth) : null,
-        }),
-        schoolsApi.updateStudent(schoolId, studentId, {
-          external_ref: externalRef.trim() || null,
-          admitted_on: admittedOn || null,
-          status: studentStatus,
-        }),
-      ]);
+
+      // Sequential, not Promise.all: these are two separate writes, and running
+      // them together meant a rejected dependant update left the student record
+      // already changed — a half-saved child behind one "Failed to save" toast.
+      await schoolsApi.updateDependant(dependantId, {
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        date_of_birth: dob,
+        gender,
+        weight_at_birth: birthWeight,
+        length_at_birth: birthLength,
+      });
+      await schoolsApi.updateStudent(schoolId, studentId, {
+        external_ref: externalRef.trim() || null,
+        admitted_on: admittedOn || null,
+        status: studentStatus,
+      });
       if (imageFile) {
         await schoolsApi.uploadStudentImage(dependantId, imageFile);
       }
@@ -464,7 +498,11 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
       setDetails((prev) => prev ? { ...prev, first_name: firstName, last_name: lastName, full_name: fullName, date_of_birth: dob, external_ref: externalRef || null, admitted_on: admittedOn || null, status: studentStatus, gender, image_filename: imagePreview ? 'preview' : prev.image_filename } : prev);
     } catch (err) {
       console.error(err);
-      addToast({ title: 'Error', message: 'Failed to save changes.', variant: 'error' });
+      // parseApiError is already used for contacts in this file. Without it a
+      // 422 naming weight_at_birth arrived as "Failed to save changes." and the
+      // operator had no way to know which field the API rejected.
+      const { message } = parseApiError(err);
+      addToast({ title: 'Error', message, variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -595,13 +633,12 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Weight at Birth (kg)</label>
-                      required
-                <input type="number" step="0.01" value={weightAtBirth} onChange={(e) => setWeightAtBirth(e.target.value)} placeholder="e.g., 3.5" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Weight at Birth (grams)</label>
+                <input type="number" step="1" min="0" required value={weightAtBirth} onChange={(e) => setWeightAtBirth(e.target.value)} placeholder="e.g., 3400" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Length at Birth (cm)</label>
-                <input type="number" step="0.1" value={lengthAtBirth} onChange={(e) => setLengthAtBirth(e.target.value)} placeholder="e.g., 50.5" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Length at Birth (millimeters)</label>
+                <input type="number" step="1" min="0" required value={lengthAtBirth} onChange={(e) => setLengthAtBirth(e.target.value)} placeholder="e.g., 520" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
               </div>
               <div className="md:col-span-2 flex items-center gap-3 pt-2">
                 <label className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition-colors">

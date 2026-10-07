@@ -132,8 +132,12 @@ export default function EnrollStudentModal({
         last_name: formData.lastName.trim(),
         gender: formData.gender,
         date_of_birth: formData.dateOfBirth,
-        weight_at_birth: formData.weightAtBirth || null,
-        length_at_birth: formData.lengthAtBirth || null,
+        // ?? not ||: a birth weight of 0 is a value the form deliberately
+        // accepts (the validation above tests for undefined, not falsiness),
+        // and || turned it into null against a required int — failing both
+        // fields at once with int_type (DEPENDABLE-API-HE).
+        weight_at_birth: formData.weightAtBirth ?? null,
+        length_at_birth: formData.lengthAtBirth ?? null,
         student: {
           external_ref: formData.externalRef.trim(),
           admitted_on: formData.admittedOn,

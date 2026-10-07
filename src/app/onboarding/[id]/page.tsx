@@ -12,6 +12,7 @@ import {
 } from '@/lib/schoolOnboarding';
 import posthog from 'posthog-js';
 import { onboardingApi, SchoolWithStats } from '@/lib/schools';
+import { parseApiError } from '@/lib/apiError';
 import EditableTable from '@/components/EditableTable';
 import ClassSummaryTable from '@/components/ClassSummaryTable';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -162,40 +163,51 @@ export default function OnboardingEdit({ params }: { params: Promise<{ id: strin
   const handleUpdate = async (id: string, updates: Partial<SchoolOnboardingRecord>) => {
     if (!onboarding) return;
 
-    // Check if this is a new record being created
-    if (id === newRecordId) {
-      // Create new record via API
-      const newRecord = await schoolOnboardingApi.createRecord(onboarding.id, {
-        first_name: updates.first_name || '',
-        last_name: updates.last_name || '',
-        gender: updates.gender ?? null,
-        date_of_birth: updates.date_of_birth || '',
-        primary_name: updates.primary_name || '',
-        primary_email: updates.primary_email || '',
-        class_name: updates.class_name || '',
-        status: 'pending',
-      } as SchoolOnboardingRecord);
+    try {
+      // Check if this is a new record being created
+      if (id === newRecordId) {
+        // Create new record via API
+        const newRecord = await schoolOnboardingApi.createRecord(onboarding.id, {
+          first_name: updates.first_name || '',
+          last_name: updates.last_name || '',
+          gender: updates.gender ?? null,
+          date_of_birth: updates.date_of_birth || '',
+          primary_name: updates.primary_name || '',
+          primary_email: updates.primary_email || '',
+          class_name: updates.class_name || '',
+          status: 'pending',
+        } as SchoolOnboardingRecord);
 
-      // Replace temp record with real one
-      setOnboarding({
-        ...onboarding,
-        records: onboarding.records.map((r) =>
-          r.id === id ? { ...newRecord, id: newRecord.id } : r
-        ),
-      });
-      setNewRecordId(null);
+        // Replace temp record with real one
+        setOnboarding({
+          ...onboarding,
+          records: onboarding.records.map((r) =>
+            r.id === id ? { ...newRecord, id: newRecord.id } : r
+          ),
+        });
+        setNewRecordId(null);
       
-      addToast({ title: 'Success', message: 'New student record has been created successfully.', variant: 'success' });
-    } else {
-      // Update existing record
-      const updated = await schoolOnboardingApi.updateRecord(onboarding.id, id, updates);
+        addToast({ title: 'Success', message: 'New student record has been created successfully.', variant: 'success' });
+      } else {
+        // Update existing record
+        const updated = await schoolOnboardingApi.updateRecord(onboarding.id, id, updates);
 
-      setOnboarding({
-        ...onboarding,
-        records: onboarding.records.map((r) =>
-          r.id === id ? { ...r, ...updated } : r
-        ),
-      });
+        setOnboarding({
+          ...onboarding,
+          records: onboarding.records.map((r) =>
+            r.id === id ? { ...r, ...updated } : r
+          ),
+        });
+      }
+    } catch (err) {
+      // Nothing used to catch this. The save was fired and forgotten, so a
+      // rejection surfaced only in Sentry and the operator saw the row settle
+      // as though it had been written (DEPENDABLE-ADMIN-F). Rethrown so the
+      // table keeps the row in edit mode with their typing intact.
+      console.error('Failed to save onboarding record', err);
+      const { message } = parseApiError(err);
+      addToast({ title: 'Save failed', message, variant: 'error' });
+      throw err;
     }
   };
 

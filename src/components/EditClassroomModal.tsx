@@ -5,6 +5,7 @@ import { X, AlertCircle, Upload, Trash2, Plus } from 'lucide-react';
 import { schoolsApi, Classroom, Membership, ClassroomTeacherAssignment } from '@/lib/schools';
 import ClassroomProfileImage from '@/components/ClassroomProfileImage';
 import ModalOverlay from '@/components/ModalOverlay';
+import { userSetupService } from '@/lib/userSetupService';
 
 interface EditClassroomModalProps {
   isOpen: boolean;
@@ -118,24 +119,43 @@ export default function EditClassroomModal({
     }
   };
 
+  // Read after mount, not during render: getSetupData() reads localStorage,
+  // which is empty on the server and would make the first paint disagree with
+  // the client.
+  const [canEditDetails, setCanEditDetails] = useState(false);
+  useEffect(() => {
+    setCanEditDetails(userSetupService.isSchoolAdmin(schoolId));
+  }, [schoolId]);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
 
     try {
-      if (!name.trim()) {
+      if (canEditDetails && !name.trim()) {
         setError('Classroom name is required');
         setSubmitting(false);
         return;
       }
 
-      // Update classroom details
-      await schoolsApi.updateClassroom(schoolId, classroom.id, {
-        name: name.trim(),
-        primary_teacher_id: primaryTeacherId,
-        is_active: isActive,
-      });
+      if (!canEditDetails && !imageFile) {
+        setError('Only a school admin can change these details. You can update the class photo.');
+        setSubmitting(false);
+        return;
+      }
+
+      // Only an admin may change the details. This used to run for everyone,
+      // and it ran BEFORE the image upload — so a teacher who opened this just
+      // to set the class photo was stopped by the name update instead, even
+      // though the API deliberately lets teachers set that photo.
+      if (canEditDetails) {
+        await schoolsApi.updateClassroom(schoolId, classroom.id, {
+          name: name.trim(),
+          primary_teacher_id: primaryTeacherId,
+          is_active: isActive,
+        });
+      }
 
       // Upload image if selected
       if (imageFile) {
@@ -190,6 +210,13 @@ export default function EditClassroomModal({
             </div>
           ) : (
             <>
+              {!canEditDetails && (
+                <div className="flex items-start gap-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 p-3 text-sm text-blue-800 dark:text-blue-300">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span>Only a school admin can change these details. You can still update the class photo.</span>
+                </div>
+              )}
+
               {/* Section 1: Basic Details */}
               <div className="space-y-4">
                 <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Classroom Details</h3>
@@ -204,7 +231,7 @@ export default function EditClassroomModal({
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g., Grade 1A"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                    disabled={submitting}
+                    disabled={submitting || !canEditDetails}
                   />
                 </div>
 
@@ -214,7 +241,7 @@ export default function EditClassroomModal({
                     id="isActive"
                     checked={isActive}
                     onChange={(e) => setIsActive(e.target.checked)}
-                    disabled={submitting}
+                    disabled={submitting || !canEditDetails}
                     className="rounded"
                   />
                   <label htmlFor="isActive" className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -279,7 +306,7 @@ export default function EditClassroomModal({
                   value={primaryTeacherId || ''}
                   onChange={(e) => setPrimaryTeacherId(e.target.value || null)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                  disabled={submitting}
+                  disabled={submitting || !canEditDetails}
                 >
                   <option value="">No Primary Teacher</option>
                   {allTeachers.map(teacher => (

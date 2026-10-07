@@ -7,7 +7,7 @@ import { onboardingApi, RecordDetails, RecordAction } from '@/lib/schools';
 
 interface EditableTableProps {
   records: SchoolOnboardingRecord[];
-  onUpdate: (id: string, updates: Partial<SchoolOnboardingRecord>) => void;
+  onUpdate: (id: string, updates: Partial<SchoolOnboardingRecord>) => Promise<void>;
   onDelete: (id: string) => void;
   onResetStatus: (id: string) => Promise<void>;
   initialEditingId?: string | null;
@@ -17,6 +17,7 @@ interface EditableTableProps {
 export default function EditableTable({ records, onUpdate, onDelete, onResetStatus, initialEditingId, schoolId }: EditableTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<SchoolOnboardingRecord>>({});
+  const [savingEdit, setSavingEdit] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [recordDetails, setRecordDetails] = useState<Map<string, RecordDetails>>(new Map());
   const [loadingActions, setLoadingActions] = useState<Set<string>>(new Set());
@@ -154,11 +155,22 @@ export default function EditableTable({ records, onUpdate, onDelete, onResetStat
     }
   };
 
-  const saveEdit = () => {
-    if (editingId) {
-      onUpdate(editingId, editData);
+  const saveEdit = async () => {
+    if (!editingId) return;
+    setSavingEdit(true);
+    try {
+      // Awaited, which it was not: onUpdate was typed `=> void`, so TypeScript
+      // never flagged the dropped promise. A rejected save became an unhandled
+      // rejection in Sentry (DEPENDABLE-ADMIN-F) while the row left edit mode
+      // still showing the typed values, exactly as if it had been written.
+      await onUpdate(editingId, editData);
       setEditingId(null);
       setEditData({});
+    } catch {
+      // The page has already told the operator what went wrong. Staying in edit
+      // mode keeps their typing on screen so they can correct and retry.
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -346,14 +358,16 @@ export default function EditableTable({ records, onUpdate, onDelete, onResetStat
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={saveEdit}
-                            className="text-green-600 hover:text-green-800"
+                            disabled={savingEdit}
+                            className="text-green-600 hover:text-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Save"
                           >
-                            <Check className="w-4 h-4" />
+                            {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                           </button>
                           <button
                             onClick={cancelEdit}
-                            className="text-red-600 hover:text-red-800"
+                            disabled={savingEdit}
+                            className="text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Cancel"
                           >
                             <X className="w-4 h-4" />

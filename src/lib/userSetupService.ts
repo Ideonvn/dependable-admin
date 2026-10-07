@@ -57,6 +57,27 @@ export const userSetupService = {
     return this.getSetupData()?.is_admin ?? false;
   },
 
+  /**
+   * Whether this user may change a school's settings, as opposed to only
+   * seeing them.
+   *
+   * school_memberships was fetched and never consulted, so the portal offered
+   * every control to everyone and let the API refuse — which is where the
+   * AdminRoleRequired 403s on classrooms came from (DEPENDABLE-API-FK and HC).
+   * Platform admins pass regardless; they are not school members.
+   */
+  isSchoolAdmin(schoolId: string): boolean {
+    const data = this.getSetupData();
+    if (!data) return false;
+    if (data.is_admin) return true;
+    return data.school_memberships.some(
+      (membership) =>
+        membership.school_id === schoolId &&
+        membership.role === 'ADMIN' &&
+        membership.status === 'active',
+    );
+  },
+
   getFullName(): string | null {
     const data = this.getSetupData();
     if (!data) return null;
