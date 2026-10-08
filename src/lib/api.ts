@@ -45,24 +45,26 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // Check for 403 error indicating expired/invalid credentials
+    // A 401 is the signal, on its own.
+    //
+    // This used to fire only when developer_message mentioned "credential" or
+    // "token". That field is debug-only and is about to stop being sent on
+    // production, at which point the test would have been undefined?.toLowerCase()
+    // — always falsy — and an admin with a dead token would have sat on a portal
+    // where every request 401s and nothing ever redirected them to sign in.
+    // The status code already says the credentials were rejected; nothing is
+    // added by reading a human-readable string to confirm it.
     if (error.response?.status === 401) {
-      const errorData = error.response?.data?.error;
-      
-      // Check if it's an authentication-related 401
-      if (errorData?.developer_message?.toLowerCase().includes('credential') ||
-          errorData?.developer_message?.toLowerCase().includes('token')) {
-        console.error('Authentication failed (401), triggering logout');
-        
-        // Clear local token data
-        tokenService.clearTokenData();
-        setGoogleIdToken(null);
-        
-        // Trigger logout by redirecting to sign-in
-        if (typeof window !== 'undefined') {
-          // Use NextAuth signOut to properly clear session
-          window.location.href = '/api/auth/signout?callbackUrl=/auth/signin';
-        }
+      console.error('Authentication failed (401), triggering logout');
+
+      // Clear local token data
+      tokenService.clearTokenData();
+      setGoogleIdToken(null);
+
+      // Trigger logout by redirecting to sign-in
+      if (typeof window !== 'undefined') {
+        // Use NextAuth signOut to properly clear session
+        window.location.href = '/api/auth/signout?callbackUrl=/auth/signin';
       }
     }
     
