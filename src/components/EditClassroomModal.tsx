@@ -174,9 +174,11 @@ export default function EditClassroomModal({
 
   if (!isOpen) return null;
 
-  // Get available teachers (exclude already assigned ones)
+  // Offer everyone not CURRENTLY assigned. classroomTeachers includes removed
+  // teachers too (their ended_at is set), and excluding them meant a teacher
+  // taken off a class — often by mis-click — could never be put back.
   const availableTeachers = allTeachers.filter(
-    t => !classroomTeachers.find(ct => ct.user_id === t.user_id)
+    t => !classroomTeachers.find(ct => ct.user_id === t.user_id && !ct.ended_at)
   );
 
   return (
@@ -366,14 +368,18 @@ export default function EditClassroomModal({
                             <td className="py-2 px-3 text-gray-600 dark:text-gray-400">{new Date(teacher.started_at).toLocaleString()}</td>
                             <td className="py-2 px-3 text-gray-600 dark:text-gray-400">{teacher.ended_at ? new Date(teacher.ended_at).toLocaleString() : '—'}</td>
                             <td className="py-2 px-3">
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveTeacher(teacher.user_id)}
-                                disabled={submitting}
-                                className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm font-medium disabled:opacity-50"
-                              >
-                                Remove
-                              </button>
+                              {/* Only a current assignment can be ended. On an ended row
+                                  the API finds nothing active and the click just failed. */}
+                              {!teacher.ended_at && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveTeacher(teacher.user_id)}
+                                  disabled={submitting}
+                                  className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm font-medium disabled:opacity-50"
+                                >
+                                  Remove
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}
