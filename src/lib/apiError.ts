@@ -10,7 +10,7 @@ interface ValidationError {
 export interface ParsedApiError {
   // Human-friendly banner/toast message.
   message: string;
-  // Field name -> message, keyed by the last segment of `loc` (e.g. "invoice_prefix").
+  // Field name -> message, keyed by the last named segment of `loc` (e.g. "invoice_prefix").
   fieldErrors: Record<string, string>;
 }
 
@@ -26,7 +26,8 @@ export function parseApiError(error: unknown): ParsedApiError {
     const validationErrors: ValidationError[] = backendError?.validation_errors ?? [];
 
     for (const ve of validationErrors) {
-      const field = String(ve.loc[ve.loc.length - 1]);
+      // List items end in an index (["body", "billing_contact_emails", 1]); key by the field name.
+      const field = String([...ve.loc].reverse().find((seg) => typeof seg === 'string') ?? ve.loc[ve.loc.length - 1]);
       // If a field has multiple issues, join them rather than dropping.
       fieldErrors[field] = fieldErrors[field] ? `${fieldErrors[field]}; ${ve.msg}` : ve.msg;
     }

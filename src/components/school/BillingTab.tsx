@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Receipt, Download, Plus, Calendar, FileText, Settings, Save, X, MapPin } from 'lucide-react';
+import { Receipt, Download, Plus, Calendar, FileText, Settings, Save, X, MapPin, Trash2 } from 'lucide-react';
 import posthog from 'posthog-js';
 import { billingApi, Invoice, BillingConfig, BillingDetails, SchoolPlan } from '@/lib/billing';
 import { parseApiError } from '@/lib/apiError';
 import { SchoolStatus, billingStateText } from '@/lib/schoolStatus';
 import { userSetupService } from '@/lib/userSetupService';
+
+// Mirrors MAX_BILLING_CONTACT_EMAILS in dependable-api billing/schemas.py.
+const MAX_BILLING_CONTACT_EMAILS = 5;
 
 interface BillingTabProps {
   schoolId: string;
@@ -70,7 +73,7 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
 
   const [detailsForm, setDetailsForm] = useState<Partial<BillingDetails>>({
     billing_contact_name: '',
-    billing_contact_email: '',
+    billing_contact_emails: [''],
     billing_contact_phone: '',
     address_line_1: '',
     address_line_2: '',
@@ -136,7 +139,7 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
       setBillingDetails(data);
       setDetailsForm({
         billing_contact_name: data.billing_contact_name || '',
-        billing_contact_email: data.billing_contact_email || '',
+        billing_contact_emails: data.billing_contact_emails.length ? data.billing_contact_emails : [''],
         billing_contact_phone: data.billing_contact_phone || '',
         address_line_1: data.address_line_1 || '',
         address_line_2: data.address_line_2 || '',
@@ -279,7 +282,7 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
     try {
       const updated = await billingApi.updateBillingDetails(schoolId, {
         billing_contact_name: detailsForm.billing_contact_name,
-        billing_contact_email: detailsForm.billing_contact_email,
+        billing_contact_emails: (detailsForm.billing_contact_emails || []).map((e) => e.trim()).filter(Boolean),
         billing_contact_phone: detailsForm.billing_contact_phone,
         address_line_1: detailsForm.address_line_1,
         address_line_2: detailsForm.address_line_2 || null,
@@ -566,7 +569,13 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                     </div>
                     <div>
                       <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Email</div>
-                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{billingDetails.billing_contact_email || 'Not set'}</div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {billingDetails.billing_contact_emails.length
+                          ? billingDetails.billing_contact_emails.map((email) => (
+                              <div key={email} className="truncate">{email}</div>
+                            ))
+                          : 'Not set'}
+                      </div>
                     </div>
                     <div>
                       <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Phone</div>
@@ -926,16 +935,51 @@ export default function BillingTab({ schoolId, status }: BillingTabProps) {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Billing Contact Email
+                      Billing Contact Emails
                     </label>
-                    <input
-                      type="email"
-                      value={detailsForm.billing_contact_email || ''}
-                      onChange={(e) => setDetailsForm({ ...detailsForm, billing_contact_email: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                    />
-                    {detailsErrors.billing_contact_email && (
-                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{detailsErrors.billing_contact_email}</p>
+                    <div className="space-y-2">
+                      {(detailsForm.billing_contact_emails || ['']).map((email, index, emails) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setDetailsForm({
+                              ...detailsForm,
+                              billing_contact_emails: emails.map((v, i) => (i === index ? e.target.value : v)),
+                            })}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                          />
+                          {emails.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setDetailsForm({
+                                ...detailsForm,
+                                billing_contact_emails: emails.filter((_, i) => i !== index),
+                              })}
+                              aria-label="Remove email"
+                              className="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {(detailsForm.billing_contact_emails || ['']).length < MAX_BILLING_CONTACT_EMAILS && (
+                      <button
+                        type="button"
+                        onClick={() => setDetailsForm({
+                          ...detailsForm,
+                          billing_contact_emails: [...(detailsForm.billing_contact_emails || ['']), ''],
+                        })}
+                        className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-[#1A1A6D] dark:text-[#20B2AA] hover:underline"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add another email
+                      </button>
+                    )}
+                    {detailsErrors.billing_contact_emails && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{detailsErrors.billing_contact_emails}</p>
                     )}
                   </div>
                   <div>

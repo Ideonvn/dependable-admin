@@ -34,7 +34,7 @@ export interface BillingDetails {
   company_name: string | null;
   tax_id: string | null;
   billing_contact_name: string | null;
-  billing_contact_email: string | null;
+  billing_contact_emails: string[];
   billing_contact_phone: string | null;
   currency: string | null;
   address_line_1: string | null;
