@@ -685,7 +685,9 @@ export const schoolsApi = {
   // Get classrooms for a specific school
   getClassrooms: async (schoolId: string): Promise<Classroom[]> => {
     try {
-      const response = await apiClient.get<Classroom[]>(`/schools/${schoolId}/classrooms`);
+      const response = await apiClient.get<Classroom[]>(`/schools/${schoolId}/classrooms`, {
+        params: { include_inactive: true },
+      });
       return response.data;
     } catch (error) {
       console.error('Error fetching classrooms:', error);
