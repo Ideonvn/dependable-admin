@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { BookOpen, Search, Plus, Users, Edit } from 'lucide-react';
+import { BookOpen, Search, Plus, Users, Edit, ClipboardCheck, ChevronRight } from 'lucide-react';
 import { schoolsApi, Classroom } from '@/lib/schools';
 import EditClassroomModal from '@/components/EditClassroomModal';
 import CreateClassroomModal from '@/components/CreateClassroomModal';
@@ -161,23 +161,34 @@ export default function ClassroomsTab({ schoolId }: ClassroomsTabProps) {
                   </div>
                 </div>
 
-                {/* Body Check */}
+                {/* Body Check — a visible tile, not a hover-only row: it opens the drill-down */}
                 <Link
                   href={`/schools/${schoolId}/classrooms/${classroom.id}/body-checks`}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-left rounded-b hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                  title="View body checks"
+                  className="group block w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/40 px-3 py-2 text-left transition-colors hover:border-[#20B2AA] hover:bg-[#20B2AA]/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#20B2AA]"
                 >
-                  <div className="flex-1">
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Checked</div>
-                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {classroom.students_overview.body_check.checked}
-                    </div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200">
+                      <ClipboardCheck className="w-3.5 h-3.5 text-[#20B2AA]" />
+                      Body checks
+                    </span>
+                    <span className="flex items-center text-xs font-medium text-[#1A1A6D] dark:text-[#20B2AA]">
+                      View
+                      <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </span>
                   </div>
-                  <div className="flex-1">
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Markers</div>
-                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {classroom.students_overview.body_check.markers}
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Checked</div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {classroom.students_overview.body_check.checked}
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Markers</div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {classroom.students_overview.body_check.markers}
+                      </div>
                     </div>
                   </div>
                 </Link>

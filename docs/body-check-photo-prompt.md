@@ -8,6 +8,27 @@
 > the field does not exist until then. If `AttendanceBodyCheck` has no `photos`
 > in the API response, stop and say so.
 >
+> **Revised again 2026-10-11 — marker-linked photos.** `BodyCheckView` numbers markers
+> front-then-back (pins and notes, matching the app), shows each marker's photos as
+> thumbnails in its note row and the general photos in a strip below; clicking any
+> thumbnail opens `BodyCheckPhotoViewer` on that photo. The classroom drill-down now
+> receives `photos` (not `photo_count`) and refetches the day when a thumbnail fails
+> (300s URLs); the student modal refetches just the open check. Supersedes the "View N
+> photos" button below.
+>
+> **Revised 2026-10-11, after Ideon's testing — supersedes "Do not render the images"
+> below.** The portal now shows the photos: a "View N photos" button on the student
+> modal and on each classroom drill-down entry opens `body-check/BodyCheckPhotoViewer`.
+> It fetches the check's photos fresh from the student's attendance calendar on open
+> (the held payload may be hours old, and the drill-down has no URLs), refetches once on
+> an image error, uses a plain `<img>` (never `next/image`), offers no download, and shows
+> the JPEG thumbnail for HEIC/HEIF originals, which most browsers cannot render.
+>
+> **Revised 2026-10-10:** the classroom drill-down (already shipped) now also
+> shows a photo count, from a new `photo_count` field on
+> `ClassroomBodyCheckEntry` — see "Coordination" below, which supersedes the
+> original instruction to leave it alone.
+>
 > This is a small task. Verify with `npx tsc --noEmit` against the pre-change
 > baseline (capture the count first and diff it) and `npm run lint`. Show the
 > output. Do not commit.
@@ -59,14 +80,16 @@ file next, and they need to find the reason rather than "fix" it by wiring up an
 ## Coordination with the classroom body check task
 
 `docs/classroom-body-check-prompt.md` landed in this repo alongside this one. It
-adds a classroom-tab drill-down listing a day's body checks for a whole class,
-backed by a new API endpoint that this feature does **not** add photos to.
+added a classroom-tab drill-down listing a day's body checks for a whole class
+(`src/components/school/ClassroomBodyChecks.tsx`). That has shipped.
 
-So after both land there are two body-check surfaces in this portal: the student
-timeline modal, which will show a photo count, and the classroom drill-down,
-which will show nothing. That is a known gap, owned on the API side, and it is
-**not** yours to close here — do not add a count to the classroom drill-down
-against a payload that has no `photos` field.
+**Revised 2026-10-10 — decided:** the classroom drill-down shows a count too.
+The API adds `photo_count: number` (not a `photos` array — no URLs) to each
+`ClassroomBodyCheckEntry`. Show it per check in the expanded student row, in the
+same wording and zero-suppression as the student modal, and read it as
+`check.photo_count ?? 0` for the deploy-window reason in Silent breakage 1. Leaving
+it blank would reintroduce the misleading screen on the surface built precisely
+for "a parent phoned about a mark on their child's arm".
 
 If you touch `StudentManage.tsx` and that task has already landed, expect a
 textual merge conflict, not a semantic one.
@@ -79,6 +102,8 @@ textual merge conflict, not a semantic one.
 |---|---|
 | `src/lib/schools.ts` | `BodyCheckPhoto` type; `photos` on `AttendanceBodyCheck` |
 | `src/components/school/StudentManage.tsx` | Count on the timeline row and in the modal |
+| `src/lib/schools.ts` | `photo_count: number` on `ClassroomBodyCheckEntry` |
+| `src/components/school/ClassroomBodyChecks.tsx` | Count per check in the expanded row |
 
 ### Types
 
@@ -172,6 +197,8 @@ should show changes to the count lines and the type file, nothing else.
 - The comment explaining why images are not rendered is in
   `StudentManage.tsx`, at the count line.
 - Marker rendering is unmodified.
+- The classroom drill-down shows the same count line per check from
+  `photo_count`, suppressed at zero, with the same not-rendered comment.
 - `npx tsc --noEmit` introduces no new errors against the captured baseline; the
   baseline count is quoted in the report.
 - `npm run lint` is clean on touched files.

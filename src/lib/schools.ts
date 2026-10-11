@@ -170,12 +170,26 @@ export interface BodyCheckMarker {
   severity?: string;
 }
 
+export interface BodyCheckPhoto {
+  id: string;
+  thumbnail_url: string; // presigned, 300s TTL — refetch to repair
+  url: string; // presigned, 300s TTL; the original, possibly HEIC
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  width: number;
+  height: number;
+  created_at: string;
+  marker_id: string | null; // the BodyCheckMarker it shows, or null for a general photo
+}
+
 export interface AttendanceBodyCheck {
   id: string;
   checked_at: string; // ISO datetime
   performed_by: string;
   front: BodyCheckMarker[];
   back: BodyCheckMarker[];
+  photos: BodyCheckPhoto[];
 }
 
 export interface AttendanceCalendarDay {
@@ -196,6 +210,7 @@ export interface ClassroomBodyCheckEntry {
   performed_by: string | null; // null when the staff account is gone
   front: BodyCheckMarker[];
   back: BodyCheckMarker[];
+  photos: BodyCheckPhoto[];
 }
 
 export interface ClassroomBodyCheckStudent {

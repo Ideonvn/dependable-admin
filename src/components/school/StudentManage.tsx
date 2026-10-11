@@ -12,6 +12,7 @@ import ClassroomProfileImage from '../ClassroomProfileImage';
 import ContactProfileImage from '../ContactProfileImage';
 import StudentProfileImage from '../StudentProfileImage';
 import BodyCheckView from './body-check/BodyCheckView';
+import BodyCheckPhotoViewer, { fetchBodyCheck } from './body-check/BodyCheckPhotoViewer';
 
 interface StudentManageProps {
   schoolId: string;
@@ -99,6 +100,18 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
   const [currentMonth, setCurrentMonth] = useState(today.getMonth() + 1);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedBodyCheck, setSelectedBodyCheck] = useState<AttendanceBodyCheck | null>(null);
+  const [viewingBodyCheckPhotoId, setViewingBodyCheckPhotoId] = useState<string | null>(null);
+
+  // The modal holds the check from when it was opened; its thumbnail URLs expire after 300s.
+  // Swap in a freshly fetched copy of the same check when they do.
+  const refreshSelectedBodyCheck = () => {
+    if (!selectedBodyCheck) return;
+    fetchBodyCheck(schoolId, studentId, selectedBodyCheck.id, selectedBodyCheck.checked_at)
+      .then((fresh) => {
+        if (fresh) setSelectedBodyCheck((current) => (current?.id === fresh.id ? fresh : current));
+      })
+      .catch((err) => console.error('Failed to refresh body check photos:', err));
+  };
 
   const [contactFormData, setContactFormData] = useState({
     first_name: '',
@@ -1125,6 +1138,8 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                             const b = item.data;
                             const time = new Date(b.checked_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
                             const markerCount = b.front.length + b.back.length;
+                            // Read defensively: a response from before the API shipped photos has no field.
+                            const photoCount = (b.photos ?? []).length;
                             return (
                               <button
                                 key={i}
@@ -1139,6 +1154,9 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                                   <p className="font-semibold text-sm">By {b.performed_by}</p>
                                   {markerCount > 0 && (
                                     <p className="text-xs opacity-80 mt-0.5">{markerCount} note{markerCount !== 1 ? 's' : ''}</p>
+                                  )}
+                                  {photoCount > 0 && (
+                                    <p className="text-xs opacity-80 mt-0.5">{photoCount} photo{photoCount !== 1 ? 's' : ''}</p>
                                   )}
                                   <p className="text-xs opacity-60 mt-1">Tap to view</p>
                                 </div>
@@ -1162,7 +1180,10 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                 <div className="flex items-center justify-between px-6 pt-5 pb-3">
                   <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Body Check</h3>
                   <button
-                    onClick={() => setSelectedBodyCheck(null)}
+                    onClick={() => {
+                      setSelectedBodyCheck(null);
+                      setViewingBodyCheckPhotoId(null);
+                    }}
                     className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
                   >
                     <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
@@ -1174,11 +1195,26 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                     By {selectedBodyCheck.performed_by} ·{' '}
                     {new Date(selectedBodyCheck.checked_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
                   </p>
-
-                  <BodyCheckView front={selectedBodyCheck.front} back={selectedBodyCheck.back} />
+                  <BodyCheckView
+                    front={selectedBodyCheck.front}
+                    back={selectedBodyCheck.back}
+                    photos={selectedBodyCheck.photos ?? []}
+                    onOpenPhoto={setViewingBodyCheckPhotoId}
+                    onPhotosExpired={refreshSelectedBodyCheck}
+                  />
                 </div>
               </div>
             </div>
+          )}
+          {selectedBodyCheck && viewingBodyCheckPhotoId && (
+            <BodyCheckPhotoViewer
+              schoolId={schoolId}
+              studentId={studentId}
+              bodyCheckId={selectedBodyCheck.id}
+              checkedAt={selectedBodyCheck.checked_at}
+              initialPhotoId={viewingBodyCheckPhotoId}
+              onClose={() => setViewingBodyCheckPhotoId(null)}
+            />
           )}
 
           {activeTab === 'reports' && (

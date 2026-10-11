@@ -7,6 +7,7 @@ import { AlertCircle, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { schoolsApi, ClassroomBodyCheckDay, ClassroomBodyCheckStudent } from '@/lib/schools';
 import StudentProfileImage from '@/components/StudentProfileImage';
 import BodyCheckView from './body-check/BodyCheckView';
+import BodyCheckPhotoViewer from './body-check/BodyCheckPhotoViewer';
 
 interface ClassroomBodyChecksProps {
   schoolId: string;
@@ -34,8 +35,19 @@ const isPresent = (student: ClassroomBodyCheckStudent) =>
 const formatTime = (iso: string) =>
   new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-function StudentRow({ schoolId, student, present }: { schoolId: string; student: ClassroomBodyCheckStudent; present: boolean }) {
+function StudentRow({
+  schoolId,
+  student,
+  present,
+  onPhotosExpired,
+}: {
+  schoolId: string;
+  student: ClassroomBodyCheckStudent;
+  present: boolean;
+  onPhotosExpired: () => void;
+}) {
   const [expanded, setExpanded] = useState(false);
+  const [viewingPhoto, setViewingPhoto] = useState<{ checkId: string; checkedAt: string; photoId: string } | null>(null);
   const name = student.full_name ?? 'Unnamed student';
   const checked = student.body_checks.length > 0;
   const badge = checked
@@ -96,10 +108,26 @@ function StudentRow({ schoolId, student, present }: { schoolId: string; student:
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 By {check.performed_by ?? 'Unknown staff member'} · {formatTime(check.checked_at)}
               </p>
-              <BodyCheckView front={check.front} back={check.back} />
+              <BodyCheckView
+                front={check.front}
+                back={check.back}
+                photos={check.photos ?? []}
+                onOpenPhoto={(photoId) => setViewingPhoto({ checkId: check.id, checkedAt: check.checked_at, photoId })}
+                onPhotosExpired={onPhotosExpired}
+              />
             </div>
           ))}
         </div>
+      )}
+      {viewingPhoto && (
+        <BodyCheckPhotoViewer
+          schoolId={schoolId}
+          studentId={student.id}
+          bodyCheckId={viewingPhoto.checkId}
+          checkedAt={viewingPhoto.checkedAt}
+          initialPhotoId={viewingPhoto.photoId}
+          onClose={() => setViewingPhoto(null)}
+        />
       )}
     </div>
   );
@@ -111,6 +139,8 @@ export default function ClassroomBodyChecks({ schoolId, classroomId, initialDate
   // Tagged with its date so a result for a previous date is never shown under the new one
   const [result, setResult] = useState<{ date: string; data: ClassroomBodyCheckDay | null; error: string | null } | null>(null);
   const [classroomName, setClassroomName] = useState<string | null>(null);
+  // Bumped to refetch the day: photo URLs in the response expire after 300s.
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     let ignore = false;
@@ -139,7 +169,7 @@ export default function ClassroomBodyChecks({ schoolId, classroomId, initialDate
     return () => {
       ignore = true;
     };
-  }, [schoolId, classroomId, date]);
+  }, [schoolId, classroomId, date, reload]);
 
   const changeDate = (value: string) => {
     if (!value) return;
@@ -201,7 +231,13 @@ export default function ClassroomBodyChecks({ schoolId, classroomId, initialDate
           {roster.length > 0 && (
             <div className="space-y-2">
               {roster.map((student) => (
-                <StudentRow key={student.id} schoolId={schoolId} student={student} present={isPresent(student)} />
+                <StudentRow
+                  key={student.id}
+                  schoolId={schoolId}
+                  student={student}
+                  present={isPresent(student)}
+                  onPhotosExpired={() => setReload((n) => n + 1)}
+                />
               ))}
             </div>
           )}
@@ -215,7 +251,13 @@ export default function ClassroomBodyChecks({ schoolId, classroomId, initialDate
                 </p>
               </div>
               {departed.map((student) => (
-                <StudentRow key={student.id} schoolId={schoolId} student={student} present={isPresent(student)} />
+                <StudentRow
+                  key={student.id}
+                  schoolId={schoolId}
+                  student={student}
+                  present={isPresent(student)}
+                  onPhotosExpired={() => setReload((n) => n + 1)}
+                />
               ))}
             </div>
           )}
