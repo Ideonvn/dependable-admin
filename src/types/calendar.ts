@@ -22,6 +22,24 @@ export interface CalendarEvent {
   occurrence_start_dt?: string; // set on expanded occurrences returned by month fetch
   occurrence_end_dt?: string;
   is_recurring: boolean;
+  rsvp_enabled: boolean;
+}
+
+export type RsvpResponse = 'YES' | 'NO' | 'MAYBE';
+
+export interface RsvpEntry {
+  user_id: string;
+  name: string;
+  state: 'NOTIFIED' | RsvpResponse;
+  timestamp: string;
+}
+
+export interface RsvpSummary {
+  total_recipients: number;
+  yes_count: number;
+  no_count: number;
+  maybe_count: number;
+  entries: RsvpEntry[];
 }
 
 export type CreateCalendarEventPayload = {
@@ -37,6 +55,7 @@ export type CreateCalendarEventPayload = {
   duration_mins?: number;
   rrule?: string;
   series_end_dt?: string;
+  rsvp_enabled?: boolean;
 };
 
 export type UpdateCalendarEventPayload = Partial<CreateCalendarEventPayload>;

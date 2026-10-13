@@ -4,6 +4,7 @@ import {
   CalendarEventScope,
   CreateCalendarEventPayload,
   EditMode,
+  RsvpSummary,
   UpdateCalendarEventPayload,
 } from '@/types/calendar';
 
@@ -20,6 +21,7 @@ interface CalendarEventOccurrenceResponse {
   is_recurring: boolean;
   classroom_id: string | null;
   student_id: string | null;
+  rsvp_enabled: boolean;
 }
 
 // Shape returned by POST/PUT (series record)
@@ -38,6 +40,7 @@ interface CalendarEventSeriesResponse {
   duration_mins: number | null;
   rrule: string | null;
   series_end_dt: string | null;
+  rsvp_enabled: boolean;
 }
 
 function mapOccurrence(schoolId: string, o: CalendarEventOccurrenceResponse): CalendarEvent {
@@ -56,6 +59,7 @@ function mapOccurrence(schoolId: string, o: CalendarEventOccurrenceResponse): Ca
     occurrence_start_dt: o.occurrence_start_dt,
     occurrence_end_dt: o.occurrence_end_dt,
     is_recurring: o.is_recurring,
+    rsvp_enabled: o.rsvp_enabled,
   };
 }
 
@@ -75,6 +79,7 @@ function mapSeries(s: CalendarEventSeriesResponse): CalendarEvent {
     rrule: s.rrule ?? undefined,
     series_end_dt: s.series_end_dt ?? undefined,
     is_recurring: !!s.rrule,
+    rsvp_enabled: s.rsvp_enabled,
   };
 }
 
@@ -125,4 +130,17 @@ export async function deleteCalendarEvent(
   const params: Record<string, string> = { edit_mode: editMode };
   if (occurrenceDate) params.occurrence_date = occurrenceDate;
   await apiClient.delete(`/schools/${schoolId}/calendar/events/${eventId}`, { params });
+}
+
+// Replies to one occurrence. occurrenceDate is the occurrence's UTC date.
+export async function fetchEventRsvps(
+  schoolId: string,
+  eventId: string,
+  occurrenceDate: string,
+): Promise<RsvpSummary> {
+  const response = await apiClient.get<RsvpSummary>(
+    `/schools/${schoolId}/calendar/events/${eventId}/rsvps`,
+    { params: { occurrence_date: occurrenceDate } },
+  );
+  return response.data;
 }

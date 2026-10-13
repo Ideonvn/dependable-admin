@@ -12,6 +12,7 @@ import {
 import { schoolsApi, Classroom, Student } from '@/lib/schools';
 import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from './calendarApi';
 import RecurringDeletePrompt from './RecurringDeletePrompt';
+import EventRsvpPanel from './EventRsvpPanel';
 import ModalOverlay from '@/components/ModalOverlay';
 
 interface EventFormModalProps {
@@ -38,6 +39,14 @@ function toLocalDateValue(iso: string): string {
   const pad = (n: number) => n.toString().padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
+
+// Start and end are held as local "YYYY-MM-DDTHH:mm" strings.
+const HOUR_MS = 60 * 60 * 1000;
+const datePart = (value: string) => value.slice(0, 10);
+const timePart = (value: string) => value.slice(11, 16) || '09:00';
+const joinLocal = (date: string, time: string) => `${date}T${time}`;
+const addMs = (value: string, ms: number) =>
+  toLocalDateTimeValue(new Date(new Date(value).getTime() + ms).toISOString());
 
 function buildRRule(freq: Frequency, endType: RecurEndType, endDate: string, afterN: number): string {
   let rule = `FREQ=${freq}`;
@@ -101,6 +110,29 @@ export default function EventFormModal({
   const [recurEndType, setRecurEndType] = useState<RecurEndType>('never');
   const [recurEndDate, setRecurEndDate] = useState('');
   const [recurAfterN, setRecurAfterN] = useState(10);
+  const [rsvpEnabled, setRsvpEnabled] = useState(event?.rsvp_enabled ?? false);
+  // Off: the event ends on the day it starts and the end date is hidden.
+  const [multiDay, setMultiDay] = useState(datePart(startDt) !== datePart(endDt));
+
+  // Google-style: moving the start carries the end along, keeping the length.
+  function changeStart(next: string) {
+    if (!next) return;
+    const length = Math.max(0, new Date(endDt).getTime() - new Date(startDt).getTime());
+    const nextEnd = addMs(next, length);
+    setStartDt(next);
+    setEndDt(nextEnd);
+    // An end pushed onto the next day switches multi-day on, so the end date
+    // is never changed out of sight.
+    if (datePart(nextEnd) !== datePart(next)) setMultiDay(true);
+  }
+
+  function changeMultiDay(on: boolean) {
+    setMultiDay(on);
+    if (!on) {
+      const sameDay = joinLocal(datePart(startDt), timePart(endDt));
+      setEndDt(new Date(sameDay) > new Date(startDt) ? sameDay : addMs(startDt, HOUR_MS));
+    }
+  }
 
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -125,14 +157,19 @@ export default function EventFormModal({
       setError('End time must be after start time');
       return;
     }
+    if (allDay && datePart(endDt) < datePart(startDt)) {
+      setError('End date must not be before the start date');
+      return;
+    }
 
     if (recurring && recurEndType === 'on_date' && !recurEndDate) {
       setError('Please select a recurrence end date');
       return;
     }
 
-    const startIso = new Date(startDt).toISOString();
-    const endIso = new Date(endDt).toISOString();
+    // All-day keeps its previous meaning: the date at UTC midnight.
+    const startIso = new Date(allDay ? datePart(startDt) : startDt).toISOString();
+    const endIso = new Date(allDay ? datePart(endDt) : endDt).toISOString();
 
     const payload: CreateCalendarEventPayload = {
       scope,
@@ -145,6 +182,7 @@ export default function EventFormModal({
       duration_mins: allDay ? undefined : Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60000),
       rrule: recurring ? buildRRule(freq, recurEndType, recurEndDate, recurAfterN) : undefined,
       series_end_dt: undefined,
+      rsvp_enabled: rsvpEnabled,
       classroom_id: scope === 'CLASSROOM' ? classroomId : undefined,
       student_id: scope === 'STUDENT' ? studentId : undefined,
     };
@@ -307,33 +345,79 @@ export default function EventFormModal({
               <span className="text-sm text-gray-700 dark:text-gray-300">All day</span>
             </div>
 
-            {/* Start / End */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Start <span className="text-red-500">*</span>
-                </label>
+            {/* Start */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Start <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
                 <input
-                  type={allDay ? 'date' : 'datetime-local'}
-                  value={allDay ? startDt.slice(0, 10) : startDt}
-                  onChange={(e) => setStartDt(e.target.value)}
+                  type="date"
+                  value={datePart(startDt)}
+                  onChange={(e) => e.target.value && changeStart(joinLocal(e.target.value, timePart(startDt)))}
                   disabled={submitting}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
                 />
+                {!allDay && (
+                  <input
+                    type="time"
+                    value={timePart(startDt)}
+                    onChange={(e) => e.target.value && changeStart(joinLocal(datePart(startDt), e.target.value))}
+                    disabled={submitting}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                  />
+                )}
               </div>
+            </div>
+
+            {/* Multi-day toggle */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => changeMultiDay(!multiDay)}
+                disabled={submitting}
+                className={`relative w-10 h-5 rounded-full transition-colors ${
+                  multiDay ? 'bg-[#1A1A6D] dark:bg-[#20B2AA]' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${
+                    multiDay ? 'left-5' : 'left-0.5'
+                  }`}
+                />
+              </button>
+              <span className="text-sm text-gray-700 dark:text-gray-300">Multi-day</span>
+            </div>
+
+            {/* End: a single all-day event has none to pick */}
+            {(multiDay || !allDay) && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   End <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type={allDay ? 'date' : 'datetime-local'}
-                  value={allDay ? endDt.slice(0, 10) : endDt}
-                  onChange={(e) => setEndDt(e.target.value)}
-                  disabled={submitting}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  {multiDay && (
+                    <input
+                      type="date"
+                      value={datePart(endDt)}
+                      min={datePart(startDt)}
+                      onChange={(e) => e.target.value && setEndDt(joinLocal(e.target.value, timePart(endDt)))}
+                      disabled={submitting}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                    />
+                  )}
+                  {!allDay && (
+                    <input
+                      type="time"
+                      value={timePart(endDt)}
+                      onChange={(e) => e.target.value && setEndDt(joinLocal(datePart(endDt), e.target.value))}
+                      disabled={submitting}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                    />
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Location */}
             <div>
@@ -360,6 +444,34 @@ export default function EventFormModal({
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1A1A6D] dark:focus:ring-[#20B2AA] focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 resize-none"
               />
             </div>
+
+            {/* RSVP toggle */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setRsvpEnabled(!rsvpEnabled)}
+                disabled={submitting}
+                className={`relative w-10 h-5 rounded-full transition-colors ${
+                  rsvpEnabled ? 'bg-[#1A1A6D] dark:bg-[#20B2AA]' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${
+                    rsvpEnabled ? 'left-5' : 'left-0.5'
+                  }`}
+                />
+              </button>
+              <span className="text-sm text-gray-700 dark:text-gray-300">Ask parents to RSVP</span>
+            </div>
+
+            {/* Responses: what was saved, not the unsaved toggle */}
+            {mode === 'edit' && event?.rsvp_enabled && (
+              <EventRsvpPanel
+                schoolId={schoolId}
+                eventId={event.id}
+                occurrenceDate={new Date(event.occurrence_start_dt ?? event.start_dt).toISOString().slice(0, 10)}
+              />
+            )}
 
             {/* Recurring toggle */}
             <div>
