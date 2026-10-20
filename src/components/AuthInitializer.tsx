@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import posthog from 'posthog-js';
 import { setGoogleIdToken } from '@/lib/api';
@@ -21,12 +21,15 @@ type InitStep = 'idle' | 'token' | 'setup' | 'done';
 export default function AuthInitializer({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const [step, setStep] = useState<InitStep>('idle');
+  const runGeneration = useRef(0);
 
   useEffect(() => {
     const initializeAuth = async () => {
-      if (step === 'done') return;
-
       if (status === 'authenticated') {
+        if (step === 'done') return;
+        // A sign-out while this run awaits bumps the generation; the stale run
+        // must not then store setup data or mark itself done.
+        const generation = runGeneration.current;
         try {
           setStep('token');
 
@@ -52,6 +55,7 @@ export default function AuthInitializer({ children }: { children: React.ReactNod
           // Fetch admin setup data after token is ready
           setStep('setup');
           const setupData = await userSetupService.fetchAndStore();
+          if (generation !== runGeneration.current) return;
 
           posthog.identify(setupData.email, {
             email: setupData.email,
@@ -84,10 +88,18 @@ export default function AuthInitializer({ children }: { children: React.ReactNod
           }
         }
       } else if (status === 'unauthenticated') {
+        // Handled whatever the step: after a sign-out without a page reload the
+        // step was still 'done', so nothing was cleared and a later sign-in in
+        // the same tab skipped seeding its token.
+        runGeneration.current += 1;
         setGoogleIdToken(null);
         tokenService.clearTokenData();
         userSetupService.clearSetupData();
-        setStep('done');
+        // Not 'done': an email/password sign-in navigates client-side, so this
+        // component stays mounted and the authenticated run that follows must still
+        // seed the token ('done' here made the first API call 401 → sign-out).
+        // Unauthenticated pages already render through isReady below.
+        setStep('idle');
       }
       // status === 'loading': do nothing, wait for next effect run
     };

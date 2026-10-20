@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import posthog from 'posthog-js';
-import { ArrowLeft, Building2, Users, BookOpen, UserCog, ClipboardCheck, Receipt, Calendar, CalendarDays, Bell, Images, Download, RefreshCw, Loader2, FileText } from 'lucide-react';
+import { ArrowLeft, Building2, Users, BookOpen, UserCog, ClipboardCheck, Receipt, Calendar, CalendarDays, Bell, Images, Download, RefreshCw, Loader2, FileText, MessageSquare } from 'lucide-react';
 import { schoolsApi, School, SchoolReportResponse } from '@/lib/schools';
 import SchoolDetailsTab from '@/components/school/SchoolDetailsTab';
 import StudentsTab from '@/components/school/StudentsTab';
@@ -16,13 +16,16 @@ import CalendarTab from '@/components/school/calendar/CalendarTab';
 import NoticesTab from '@/components/school/notices/NoticesTab';
 import GalleryTab from '@/components/school/gallery/GalleryTab';
 import LoggingTab from '@/components/school/LoggingTab';
+import MessagesTab from '@/components/school/messages/MessagesTab';
+import { fetchChatUnreadCount } from '@/components/school/messages/messagesApi';
+import { userSetupService } from '@/lib/userSetupService';
 
-type TabType = 'details' | 'students' | 'membership' | 'classrooms' | 'enrollments' | 'schoolYears' | 'billing' | 'calendar' | 'notices' | 'gallery' | 'logging';
+type TabType = 'details' | 'students' | 'membership' | 'classrooms' | 'enrollments' | 'schoolYears' | 'billing' | 'calendar' | 'notices' | 'gallery' | 'logging' | 'messages';
 
 const getInitialTab = (): TabType => {
   if (typeof window !== 'undefined') {
     const hash = window.location.hash.slice(1);
-    if (['details', 'students', 'membership', 'classrooms', 'enrollments', 'schoolYears', 'billing', 'calendar', 'notices', 'gallery', 'logging'].includes(hash)) {
+    if (['details', 'students', 'membership', 'classrooms', 'enrollments', 'schoolYears', 'billing', 'calendar', 'notices', 'gallery', 'logging', 'messages'].includes(hash)) {
       return hash as TabType;
     }
   }
@@ -40,6 +43,9 @@ export default function SchoolDetailPage() {
   const [reportStatus, setReportStatus] = useState<SchoolReportResponse | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportChecking, setReportChecking] = useState(false);
+  // Messages: school admins (and platform admins, read-only), never teachers.
+  const canMessage = userSetupService.isSchoolAdmin(schoolId);
+  const [unreadChats, setUnreadChats] = useState(0);
 
   // Update hash when tab changes
   useEffect(() => {
@@ -51,6 +57,14 @@ export default function SchoolDetailPage() {
     loadSchool();
     fetchReportStatus();
   }, [schoolId]);
+
+  useEffect(() => {
+    if (!canMessage) {
+      if (activeTab === 'messages') setActiveTab('details');
+      return;
+    }
+    fetchChatUnreadCount(schoolId).then(setUnreadChats).catch(() => undefined);
+  }, [schoolId, canMessage, activeTab]);
 
   const loadSchool = async () => {
     setLoading(true);
@@ -106,6 +120,9 @@ export default function SchoolDetailPage() {
     { id: 'schoolYears' as TabType, label: 'School Years', icon: Calendar },
     { id: 'calendar' as TabType, label: 'Calendar', icon: CalendarDays },
     { id: 'notices' as TabType, label: 'Notices', icon: Bell },
+    ...(canMessage
+      ? [{ id: 'messages' as TabType, label: unreadChats > 0 ? `Messages (${unreadChats})` : 'Messages', icon: MessageSquare }]
+      : []),
     { id: 'gallery' as TabType, label: 'Gallery', icon: Images },
     { id: 'logging' as TabType, label: 'Logging', icon: FileText },
     { id: 'billing' as TabType, label: 'Billing', icon: Receipt },
@@ -255,6 +272,9 @@ export default function SchoolDetailPage() {
         {activeTab === 'notices' && <NoticesTab schoolId={school.id} />}
         {activeTab === 'gallery' && <GalleryTab schoolId={school.id} schoolName={school.name} />}
         {activeTab === 'logging' && <LoggingTab schoolId={school.id} />}
+        {activeTab === 'messages' && canMessage && (
+          <MessagesTab schoolId={school.id} schoolName={school.name} onUnreadChange={setUnreadChats} />
+        )}
       </div>
     </main>
   );
