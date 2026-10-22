@@ -19,6 +19,7 @@ import {
   TickState,
 } from './chatUtils';
 import ChatInviteModal from './ChatInviteModal';
+import VoiceNote from './VoiceNote';
 
 const time = (iso: string): string => {
   const d = new Date(iso);
@@ -288,7 +289,18 @@ export default function ChatThread({
                       {multiParty && !mine && (
                         <p className="text-xs font-semibold text-[#1A1A6D] dark:text-[#20B2AA] mb-0.5">{m.sender_display_name}</p>
                       )}
-                      <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
+                      {m.kind === 'VOICE' ? (
+                        <VoiceNote
+                          schoolId={schoolId}
+                          conversationId={conversationId}
+                          messageId={m.id}
+                          durationMs={m.voice_duration_ms}
+                          waveform={m.voice_waveform}
+                          mine={mine}
+                        />
+                      ) : (
+                        <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
+                      )}
                       <div
                         className={`flex items-center justify-end gap-1 mt-0.5 text-[11px] ${
                           mine ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'

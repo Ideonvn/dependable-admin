@@ -101,6 +101,16 @@ export async function sendChatMessage(
   return response.data;
 }
 
+// A short-lived URL for one play (the portal plays voice notes, it doesn't record them).
+export async function fetchChatVoiceUrl(
+  schoolId: string,
+  conversationId: string,
+  messageId: string,
+): Promise<{ url: string; expires_in: number; content_type: string }> {
+  const response = await apiClient.get(`${base(schoolId)}/${conversationId}/messages/${messageId}/voice`);
+  return response.data;
+}
+
 export async function markChatRead(schoolId: string, conversationId: string, seq: number): Promise<void> {
   await apiClient.post(`${base(schoolId)}/${conversationId}/read`, { seq });
 }

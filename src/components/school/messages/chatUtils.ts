@@ -192,9 +192,35 @@ const ERROR_COPY: Record<string, string> = {
   CHAT_INVALID_REACTION: "That reaction isn't supported.",
   CHAT_CLIENT_MSG_ID_CONFLICT: 'This message could not be sent. Please try again.',
   CHAT_INVALID_SETTINGS: 'Set both a start and an end time, or neither.',
+  CHAT_VOICE_TOO_LARGE: 'This voice note is too large to send.',
+  CHAT_VOICE_INVALID: "This voice note couldn't be sent.",
+  CHAT_NOT_A_VOICE_NOTE: 'This voice note could not be found.',
 };
 
 /** Copy for an API error_code; generic for anything unknown. */
 export const chatErrorMessage = (code: string | undefined): string =>
   (code && ERROR_COPY[code]) || 'Something went wrong. Please try again.';
 
+
+/** m:ss, rounded to the nearest second (14 200 ms → "0:14"). */
+export const formatVoiceDuration = (ms: number | null | undefined): string => {
+  const seconds = Math.max(0, Math.round((ms ?? 0) / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+};
+
+/** What a list shows for a message: the text, or a label for a voice note. */
+export const messagePreviewText = (m: ChatMessage): string =>
+  m.kind === 'VOICE' ? `🎤 Voice note (${formatVoiceDuration(m.voice_duration_ms)})` : m.body;
+
+// Notes sent before waveforms existed get even stubs at this height.
+const FLAT_LEVEL = 0.25;
+const WAVEFORM_MAX = 31;
+
+/** Stored levels (0..31) → `n` bars of 0..1 for drawing (app: utils/voiceWaveform.ts barsFor). */
+export const barsFor = (stored: number[] | null | undefined, n: number): number[] => {
+  if (!stored || stored.length === 0) return new Array(n).fill(FLAT_LEVEL);
+  return Array.from({ length: n }, (_, i) => {
+    const pos = (i * stored.length) / n;
+    return stored[Math.min(stored.length - 1, Math.floor(pos))] / WAVEFORM_MAX;
+  });
+};

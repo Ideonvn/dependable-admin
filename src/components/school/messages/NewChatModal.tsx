@@ -164,8 +164,8 @@ export default function NewChatModal({
               {!recipients && !recipientsError && <p className="text-sm text-gray-500">Loading…</p>}
               {recipients && recipients.guardians.length === 0 && (
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  There&apos;s no one you can message about this child. Chats from staff go to the child&apos;s
-                  primary guardian.
+                  There&apos;s no one you can message about this child: they have no guardians linked to
+                  their profile.
                 </p>
               )}
               {recipients &&

@@ -2,7 +2,7 @@
 'use client';
 
 import { ChatConversationSummary } from '@/types/chat';
-import { chatListHeading } from './chatUtils';
+import { chatListHeading, messagePreviewText } from './chatUtils';
 import ChatAvatar from './ChatAvatar';
 
 const when = (iso: string | null): string => {
@@ -30,7 +30,7 @@ export default function ChatListItem({
   const { title, subtitle, avatar, more } = chatListHeading(chat, viewerId);
   const last = chat.last_message;
   const preview = last
-    ? `${last.sender_id === viewerId ? 'You' : last.sender_display_name}: ${last.body}`
+    ? `${last.sender_id === viewerId ? 'You' : last.sender_display_name}: ${messagePreviewText(last)}`
     : 'No messages yet';
   const unread = chat.unread_count;
 

@@ -28,10 +28,12 @@ export interface ChatMessage {
   sender_id: string | null;
   sender_display_name: string;
   client_msg_id: string;
-  kind: 'TEXT';
-  body: string;
+  kind: 'TEXT' | 'VOICE';
+  body: string; // '' for VOICE
   created_at: string;
   reactions: ChatReaction[];
+  voice_duration_ms?: number | null; // VOICE only
+  voice_waveform?: number[] | null; // VOICE only: bars 0..31; null → even stubs
 }
 
 export interface ChatConversationSummary {
