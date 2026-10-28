@@ -50,6 +50,9 @@ const PINNED_DAY_HIDE_MS = 1500;
 // A scroll this soon after a wheel, touch or pointer event is the user's; others
 // (loading, following new messages) don't show the pinned date.
 const USER_SCROLL_MS = 600;
+// The pin's height plus a little: a separator this close to the top would sit
+// under it.
+const PINNED_CLEARANCE_PX = 44;
 
 export default function ChatThread({
   schoolId,
@@ -141,11 +144,16 @@ export default function ChatThread({
     nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
     if (Date.now() - lastUserInput.current > USER_SCROLL_MS) return;
     let label: string | null = rows[0] ? dayLabel(rows[0].item.created_at) : null;
+    // A separator sitting at the top edge already says the day: hide the pin
+    // there rather than drawing it over the same words.
+    let separatorAtTop = false;
     el.querySelectorAll<HTMLElement>('[data-day]').forEach((sep) => {
-      if (sep.offsetTop <= el.scrollTop + 8) label = sep.dataset.day ?? label;
+      const top = sep.offsetTop - el.scrollTop;
+      if (top <= 8) label = sep.dataset.day ?? label;
+      if (top > -sep.offsetHeight && top < PINNED_CLEARANCE_PX) separatorAtTop = true;
     });
     setPinnedDay(label);
-    setPinnedVisible(true);
+    setPinnedVisible(!separatorAtTop);
     if (hideTimer.current) clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => setPinnedVisible(false), PINNED_DAY_HIDE_MS);
   };
@@ -265,7 +273,9 @@ export default function ChatThread({
         className="relative flex-1 overflow-y-auto px-4 py-3 space-y-1.5"
       >
         {pinnedDay && (
-          <div className="sticky top-0 z-10 h-0 flex justify-center pointer-events-none" aria-hidden>
+          // items-start: in an h-0 flex row the default stretch squashes the
+          // pill to zero height and its text spills out below the border.
+          <div className="sticky top-0 z-10 h-0 flex items-start justify-center pointer-events-none" aria-hidden>
             <span
               data-testid="pinned-day"
               className={`mt-1 rounded-full px-3 py-0.5 text-xs font-semibold shadow-sm bg-white/95 dark:bg-gray-800/95 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 transition-opacity duration-300 ${
