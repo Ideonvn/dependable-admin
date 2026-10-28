@@ -9,25 +9,23 @@ import { errorCode, fetchChatRecipients } from './messagesApi';
 import {
   chatErrorMessage,
   closedReasonText,
+  dayLabel,
   disclosureText,
   formatQuietUntil,
   groupReactions,
   joinNames,
   myReaction,
   QUICK_REACTIONS,
+  startsDay,
   tickState,
   TickState,
 } from './chatUtils';
 import ChatInviteModal from './ChatInviteModal';
 import VoiceNote from './VoiceNote';
 
-const time = (iso: string): string => {
-  const d = new Date(iso);
-  const hhmm = d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
-  return d.toDateString() === new Date().toDateString()
-    ? hhmm
-    : `${d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} ${hhmm}`;
-};
+// The day is on the separator above; the bubble only needs the time.
+const time = (iso: string): string =>
+  new Date(iso).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
 
 function Tick({ tick }: { tick: TickState }) {
   switch (tick) {
@@ -47,6 +45,11 @@ function Tick({ tick }: { tick: TickState }) {
 type Row = { kind: 'message'; item: ChatMessage } | { kind: 'pending'; item: PendingChatMessage };
 
 const NEAR_BOTTOM_PX = 80;
+// The pinned date hides this long after scrolling stops, as in WhatsApp.
+const PINNED_DAY_HIDE_MS = 1500;
+// A scroll this soon after a wheel, touch or pointer event is the user's; others
+// (loading, following new messages) don't show the pinned date.
+const USER_SCROLL_MS = 600;
 
 export default function ChatThread({
   schoolId,
@@ -108,10 +111,43 @@ export default function ChatThread({
   // row then. Applied only when the oldest row changes (the page landed), so a
   // sync arriving first doesn't consume it and shift the view.
   const olderAnchor = useRef<{ height: number; oldestKey: string | undefined } | null>(null);
+  // A separator above the first message of each day; none above the oldest
+  // loaded message while older history remains, or it would sit mid-day.
+  const display = useMemo(() => {
+    const now = new Date();
+    return rows.flatMap((row, i) => {
+      const at = row.item.created_at;
+      return startsDay(at, rows[i - 1]?.item.created_at, !thread.hasOlder)
+        ? [{ kind: 'day' as const, key: `day-${i}-${at}`, label: dayLabel(at, now) }, row]
+        : [row];
+    });
+  }, [rows, thread.hasOlder]);
+
+  // The day pinned at the top while the user scrolls: the last separator above
+  // the top edge, or the first message's day when none is (older not loaded).
+  const [pinnedDay, setPinnedDay] = useState<string | null>(null);
+  const [pinnedVisible, setPinnedVisible] = useState(false);
+  const lastUserInput = useRef(0);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+  }, []);
+  const markUserInput = () => {
+    lastUserInput.current = Date.now();
+  };
   const onScroll = () => {
     const el = scroller.current;
     if (!el) return;
     nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
+    if (Date.now() - lastUserInput.current > USER_SCROLL_MS) return;
+    let label: string | null = rows[0] ? dayLabel(rows[0].item.created_at) : null;
+    el.querySelectorAll<HTMLElement>('[data-day]').forEach((sep) => {
+      if (sep.offsetTop <= el.scrollTop + 8) label = sep.dataset.day ?? label;
+    });
+    setPinnedDay(label);
+    setPinnedVisible(true);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setPinnedVisible(false), PINNED_DAY_HIDE_MS);
   };
   useLayoutEffect(() => {
     const el = scroller.current;
@@ -219,7 +255,27 @@ export default function ChatThread({
       )}
 
       {/* Messages */}
-      <div ref={scroller} onScroll={onScroll} className="flex-1 overflow-y-auto px-4 py-3 space-y-1.5">
+      <div
+        ref={scroller}
+        onScroll={onScroll}
+        onWheel={markUserInput}
+        onTouchMove={markUserInput}
+        onPointerDown={markUserInput}
+        onKeyDown={markUserInput}
+        className="relative flex-1 overflow-y-auto px-4 py-3 space-y-1.5"
+      >
+        {pinnedDay && (
+          <div className="sticky top-0 z-10 h-0 flex justify-center pointer-events-none" aria-hidden>
+            <span
+              data-testid="pinned-day"
+              className={`mt-1 rounded-full px-3 py-0.5 text-xs font-semibold shadow-sm bg-white/95 dark:bg-gray-800/95 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 transition-opacity duration-300 ${
+                pinnedVisible ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              {pinnedDay}
+            </span>
+          </div>
+        )}
         {!thread.loaded ? (
           <div className="flex justify-center py-10">
             <div className="w-8 h-8 border-4 border-[#1A1A6D] dark:border-[#20B2AA] border-t-transparent rounded-full animate-spin" />
@@ -246,7 +302,16 @@ export default function ChatThread({
                 {canPost ? 'Say hello 👋' : 'No messages in this chat.'}
               </p>
             )}
-            {rows.map((row) => {
+            {display.map((row) => {
+              if (row.kind === 'day') {
+                return (
+                  <div key={row.key} data-day={row.label} className="flex justify-center py-2" role="separator">
+                    <span className="rounded-full px-3 py-0.5 text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                      {row.label}
+                    </span>
+                  </div>
+                );
+              }
               if (row.kind === 'pending') {
                 const p = row.item;
                 return (

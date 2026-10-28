@@ -224,3 +224,36 @@ export const barsFor = (stored: number[] | null | undefined, n: number): number[
     return stored[Math.min(stored.length - 1, Math.floor(pos))] / WAVEFORM_MAX;
   });
 };
+
+// Day separators (WhatsApp style). By the device's local calendar day.
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+/** Local calendar day, e.g. "2026-10-28": what a separator groups by. */
+export const dayKey = (iso: string): string => {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/** "Today", "Yesterday", the weekday within the last week, else "15 October 2026". */
+export const dayLabel = (iso: string, now: Date = new Date()): string => {
+  const d = new Date(iso);
+  // Rounded: a day across a daylight-saving change is 23 or 25 hours.
+  const days = Math.round((startOfDay(now).getTime() - startOfDay(d).getTime()) / 86_400_000);
+  if (days <= 0) return 'Today'; // a clock slightly ahead of ours is still today
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return WEEKDAYS[d.getDay()];
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+};
+
+/**
+ * Whether a message opens its day, i.e. gets a separator above it. `older` is
+ * the message just before it in time; without one, only when there is no older
+ * history left to load (or the separator would sit mid-day until it loads).
+ */
+export const startsDay = (current: string, older: string | undefined, noOlderHistory: boolean): boolean =>
+  older === undefined ? noOlderHistory : dayKey(older) !== dayKey(current);
