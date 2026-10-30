@@ -12,6 +12,10 @@ interface OnboardStudentModalProps {
   onClose: () => void;
   onSuccess: (primaryEmail: string) => void;
   schoolId: string;
+  // A later first day (YYYY-MM-DD), e.g. the next school year's start: the child
+  // is enrolled from then once the parent completes onboarding.
+  startsOn?: string;
+  defaultClassroomId?: string;
 }
 
 interface FormData {
@@ -41,6 +45,8 @@ export default function OnboardStudentModal({
   onClose,
   onSuccess,
   schoolId,
+  startsOn,
+  defaultClassroomId,
 }: OnboardStudentModalProps) {
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,8 +69,9 @@ export default function OnboardStudentModal({
     try {
       const data = await schoolsApi.getClassrooms(schoolId);
       setClassrooms(data);
-      if (data.length > 0) {
-        setFormData((prev) => ({ ...prev, classroomId: data[0].id }));
+      const preferred = data.find((c) => c.id === defaultClassroomId) ?? data[0];
+      if (preferred) {
+        setFormData((prev) => ({ ...prev, classroomId: preferred.id }));
       }
     } catch (err) {
       console.error('Error loading classrooms:', err);
@@ -112,6 +119,7 @@ export default function OnboardStudentModal({
         date_of_birth: formData.dateOfBirth || null,
         primary_name: primaryName,
         primary_email: primaryEmail,
+        starts_on: startsOn ?? null,
       });
 
       posthog.capture('student_onboarded', { school_id: schoolId });
@@ -143,6 +151,11 @@ export default function OnboardStudentModal({
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               We&apos;ll email the parent a link to complete their child&apos;s details.
             </p>
+            {startsOn && (
+              <p className="text-sm text-[#1A1A6D] dark:text-[#20B2AA] mt-1">
+                Starts {new Date(`${startsOn}T00:00:00`).toLocaleDateString()}: they join the class on that day.
+              </p>
+            )}
           </div>
           <button
             onClick={onClose}

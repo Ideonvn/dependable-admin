@@ -869,13 +869,18 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                       {enrollments.map((enrollment) => {
                         const startDate = new Date(enrollment.starts_on);
                         const endDate = enrollment.ends_on ? new Date(enrollment.ends_on) : null;
-                        const isActive = !endDate || endDate >= new Date();
+                        // Compare the YYYY-MM-DD strings against today's local date: a class
+                        // placed ahead of time (next year's) has not started, so it is not active.
+                        const today = new Date().toLocaleDateString('en-CA');
+                        const isUpcoming = enrollment.starts_on > today;
+                        const isActive = !isUpcoming && (!enrollment.ends_on || enrollment.ends_on >= today);
+                        const isEnded = !!enrollment.ends_on && enrollment.ends_on < today;
                         
                         return (
                           <tr
                             key={enrollment.id}
                             className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
-                              !isActive ? 'opacity-50' : ''
+                              isEnded ? 'opacity-50' : ''
                             }`}
                           >
                             {/* Enrollment Period */}
@@ -921,7 +926,9 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                               <div className="flex flex-col items-start gap-2">
                                 <span
                                   className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                    enrollment.status === 'enrolled'
+                                    isUpcoming && enrollment.status === 'enrolled'
+                                      ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+                                      : enrollment.status === 'enrolled'
                                       ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                                       : enrollment.status === 'withdrawn'
                                       ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
@@ -930,14 +937,20 @@ export default function StudentManage({ schoolId, studentId }: StudentManageProp
                                       : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400'
                                   }`}
                                 >
-                                  {enrollment.status.charAt(0).toUpperCase() + enrollment.status.slice(1)}
+                                  {isUpcoming && enrollment.status === 'enrolled'
+                                    ? 'Upcoming'
+                                    : enrollment.status.charAt(0).toUpperCase() + enrollment.status.slice(1)}
                                 </span>
-                                {isActive && enrollment.status === 'enrolled' ? (
+                                {isUpcoming && enrollment.status === 'enrolled' ? (
+                                  <span className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-300">
+                                    Starts {startDate.toLocaleDateString()}
+                                  </span>
+                                ) : isActive && enrollment.status === 'enrolled' ? (
                                   <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                                     Active
                                   </span>
-                                ) : !isActive ? (
+                                ) : isEnded ? (
                                   <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-500">
                                     Ended
                                   </span>

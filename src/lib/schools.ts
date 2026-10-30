@@ -339,6 +339,7 @@ export interface StudentOnboardingRecord {
   primary_name: string;
   primary_email: string;
   class_name: string;
+  starts_on: string | null;
   validation_sent_at: string | null;
   validation_completed_at: string | null;
   _created_at: string;
@@ -363,6 +364,58 @@ const normalizeStudentGender = (value: unknown): StudentGender => {
 };
 
 // API for schools
+// Year transition: next year's class per child, planned then applied.
+export type TransitionAction = 'move' | 'leave' | 'unplaced';
+export type TransitionPlacementSource = 'plan' | 'current_class' | 'admitted' | 'none';
+
+export interface TransitionStudent {
+  student_id: string;
+  full_name: string | null;
+  gender: string | null;
+  date_of_birth: string | null;
+  current_classroom_id: string | null;
+  is_new: boolean;
+  planned: {
+    action: TransitionAction;
+    classroom_id: string | null;
+    source: TransitionPlacementSource;
+  };
+  applied_classroom_id: string | null;
+  pending: boolean;
+}
+
+export interface YearTransitionBoard {
+  school_year: SchoolYear;
+  previous_school_year: SchoolYear | null;
+  transition: {
+    id: string;
+    // null: leavers' classes end, their status is left alone.
+    leaver_status: 'graduated' | 'left' | null;
+    applied_at: string | null;
+    applied_starts_on: string | null;
+    leavers_processed_at: string | null;
+    notify_scheduled_at: string | null;
+  } | null;
+  locked: boolean;
+  classrooms: { id: string; name: string }[];
+  students: TransitionStudent[];
+  invited: {
+    id: string;
+    full_name: string;
+    class_name: string;
+    status: string;
+    primary_email: string;
+    starts_on: string;
+  }[];
+  pending_count: number;
+}
+
+export interface TransitionEntryInput {
+  student_id: string;
+  action: TransitionAction;
+  to_classroom_id: string | null;
+}
+
 export const schoolsApi = {
   // Get all schools (main view with students overview)
   getAllSchools: async (): Promise<School[]> => {
@@ -796,6 +849,7 @@ export const schoolsApi = {
       date_of_birth: string | null;
       primary_name: string;
       primary_email: string;
+      starts_on?: string | null;
     }
   ): Promise<StudentOnboardingRecord> => {
     const response = await apiClient.post<StudentOnboardingRecord>(
@@ -992,6 +1046,53 @@ export const schoolsApi = {
       data
     );
     return response.data;
+  },
+
+  getYearTransition: async (schoolId: string, yearId: string): Promise<YearTransitionBoard> => {
+    const response = await apiClient.get<YearTransitionBoard>(
+      `/schools/${schoolId}/years/${yearId}/transition`
+    );
+    return response.data;
+  },
+
+  updateYearTransitionEntries: async (
+    schoolId: string,
+    yearId: string,
+    entries: TransitionEntryInput[]
+  ): Promise<YearTransitionBoard> => {
+    const response = await apiClient.put<YearTransitionBoard>(
+      `/schools/${schoolId}/years/${yearId}/transition/entries`,
+      { entries }
+    );
+    return response.data;
+  },
+
+  updateYearTransitionSettings: async (
+    schoolId: string,
+    yearId: string,
+    data: { leaver_status: 'graduated' | 'left' | null }
+  ): Promise<YearTransitionBoard> => {
+    const response = await apiClient.patch<YearTransitionBoard>(
+      `/schools/${schoolId}/years/${yearId}/transition`,
+      data
+    );
+    return response.data;
+  },
+
+  applyYearTransition: async (
+    schoolId: string,
+    yearId: string,
+    data: { notify_families: boolean; notify_at: string | null }
+  ): Promise<YearTransitionBoard> => {
+    const response = await apiClient.post<YearTransitionBoard>(
+      `/schools/${schoolId}/years/${yearId}/transition/apply`,
+      data
+    );
+    return response.data;
+  },
+
+  discardYearTransition: async (schoolId: string, yearId: string): Promise<void> => {
+    await apiClient.delete(`/schools/${schoolId}/years/${yearId}/transition`);
   },
 
   // Request a school report generation

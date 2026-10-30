@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Search, Plus, Edit, Trash2 } from 'lucide-react';
+import { Calendar, Search, Plus, Edit, Trash2, ArrowRightLeft } from 'lucide-react';
 import { schoolsApi, SchoolYear } from '@/lib/schools';
 import CreateSchoolYearModal from '@/components/CreateSchoolYearModal';
 import EditSchoolYearModal from '@/components/EditSchoolYearModal';
 import AlertDialog from '@/components/AlertDialog';
+import { parseApiError } from '@/lib/apiError';
 
 interface SchoolYearsTabProps {
   schoolId: string;
@@ -21,6 +22,8 @@ export default function SchoolYearsTab({ schoolId }: SchoolYearsTabProps) {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [yearToDelete, setYearToDelete] = useState<SchoolYear | null>(null);
+  const [planningNext, setPlanningNext] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
 
   useEffect(() => {
     loadSchoolYears();
@@ -35,6 +38,34 @@ export default function SchoolYearsTab({ schoolId }: SchoolYearsTabProps) {
       console.error('Error loading school years:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Opens the class plan for the next year, creating that year first (1 Jan to
+  // 31 Dec of the calendar year after the latest one) when it doesn't exist yet.
+  const planNextYear = async () => {
+    setPlanError(null);
+    const today = new Date().toLocaleDateString('en-CA');
+    const upcoming = [...schoolYears]
+      .filter((y) => y.starts_on > today)
+      .sort((a, b) => a.starts_on.localeCompare(b.starts_on))[0];
+    if (upcoming) {
+      window.location.href = `/schools/${schoolId}/years/${upcoming.id}/transition`;
+      return;
+    }
+    const latest = [...schoolYears].sort((a, b) => b.starts_on.localeCompare(a.starts_on))[0];
+    const next = (latest ? Number(latest.starts_on.slice(0, 4)) : Number(today.slice(0, 4))) + 1;
+    setPlanningNext(true);
+    try {
+      const created = await schoolsApi.createSchoolYear(schoolId, {
+        name: String(next),
+        starts_on: `${next}-01-01`,
+        ends_on: `${next}-12-31`,
+      });
+      window.location.href = `/schools/${schoolId}/years/${created.id}/transition?created=1`;
+    } catch (error) {
+      setPlanError(parseApiError(error).message);
+      setPlanningNext(false);
     }
   };
 
@@ -77,14 +108,25 @@ export default function SchoolYearsTab({ schoolId }: SchoolYearsTabProps) {
           <Calendar className="w-6 h-6 text-[#1A1A6D] dark:text-[#20B2AA]" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">School Years</h3>
         </div>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity"
-        >
-          <Plus className="w-4 h-4" />
-          Add Year
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={planNextYear}
+            disabled={loading || planningNext}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+          >
+            <ArrowRightLeft className="w-4 h-4" />
+            {planningNext ? 'Creating next year…' : 'Plan next year'}
+          </button>
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-[#1A1A6D] dark:bg-[#20B2AA] text-white rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-4 h-4" />
+            Add Year
+          </button>
+        </div>
       </div>
+      {planError && <p className="mb-4 text-sm text-red-600 dark:text-red-400">{planError}</p>}
 
       {/* Search Bar */}
       <div className="relative mb-6">
@@ -171,6 +213,15 @@ export default function SchoolYearsTab({ schoolId }: SchoolYearsTabProps) {
                         >
                           <Edit className="w-4 h-4" />
                         </button>
+                        {/* Plan which class each child moves to, ahead of this year's start */}
+                        <a
+                          href={`/schools/${schoolId}/years/${year.id}/transition`}
+                          className="flex items-center gap-1.5 px-2 py-1.5 text-sm text-[#1A1A6D] dark:text-[#20B2AA] hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                          title="Plan classes for this year"
+                        >
+                          <ArrowRightLeft className="w-4 h-4" />
+                          {year.starts_on > new Date().toLocaleDateString('en-CA') ? 'Plan classes' : 'View class plan'}
+                        </a>
                         {/* TODO: Create backend endpoint */}
                         {/* <button
                           onClick={() => handleDeleteClick(year)}
